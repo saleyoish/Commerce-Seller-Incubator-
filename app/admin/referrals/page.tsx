@@ -114,7 +114,7 @@ export default async function ReferralsAdminPage() {
               <Users className="w-5 h-5 text-blue-600" />
               <span className="text-sm text-gray-600">Total</span>
             </div>
-            <p className="text-2xl font-bold mt-1">{stats.total}</p>
+            <p className="text-2xl font-bold mt-1">{stats?.total ?? 0}</p>
           </CardContent>
         </Card>
 
@@ -124,7 +124,7 @@ export default async function ReferralsAdminPage() {
               <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
               <span className="text-sm text-gray-600">Approved</span>
             </div>
-            <p className="text-2xl font-bold mt-1">{stats.approved}</p>
+            <p className="text-2xl font-bold mt-1">{stats?.approved ?? 0}</p>
           </CardContent>
         </Card>
 
@@ -134,7 +134,7 @@ export default async function ReferralsAdminPage() {
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
               <span className="text-sm text-gray-600">Active</span>
             </div>
-            <p className="text-2xl font-bold mt-1">{stats.active}</p>
+            <p className="text-2xl font-bold mt-1">{stats?.active ?? 0}</p>
           </CardContent>
         </Card>
 
@@ -144,7 +144,7 @@ export default async function ReferralsAdminPage() {
               <CheckCircle className="w-5 h-5 text-purple-600" />
               <span className="text-sm text-gray-600">Paid</span>
             </div>
-            <p className="text-2xl font-bold mt-1">{stats.paid}</p>
+            <p className="text-2xl font-bold mt-1">{stats?.paid ?? 0}</p>
           </CardContent>
         </Card>
 
@@ -155,7 +155,7 @@ export default async function ReferralsAdminPage() {
               <span className="text-sm text-gray-600">Total Paid</span>
             </div>
             <p className="text-2xl font-bold mt-1">
-              ${stats.totalPaid.toFixed(2)}
+              ${(stats?.totalPaid ?? 0).toFixed(2)}
             </p>
           </CardContent>
         </Card>
@@ -167,7 +167,7 @@ export default async function ReferralsAdminPage() {
               <span className="text-sm text-gray-600">Pending</span>
             </div>
             <p className="text-2xl font-bold mt-1">
-              ${stats.totalPending.toFixed(2)}
+              ${(stats?.totalPending ?? 0).toFixed(2)}
             </p>
           </CardContent>
         </Card>
@@ -194,14 +194,14 @@ export default async function ReferralsAdminPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {topReferrers.length === 0 ? (
+              {topReferrers?.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8">
                     No referrals yet
                   </TableCell>
                 </TableRow>
               ) : (
-                topReferrers.map((referrer: any, index: number) => (
+                topReferrers?.map((referrer: any, index: number) => (
                   <TableRow key={referrer.referrer_id}>
                     <TableCell>
                       {index === 0 && <span className="text-2xl">🥇</span>}
@@ -250,14 +250,14 @@ export default async function ReferralsAdminPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {referrals.length === 0 ? (
+              {referrals?.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-8">
                     No referrals yet
                   </TableCell>
                 </TableRow>
               ) : (
-                referrals.map((referral) => (
+                referrals?.map((referral) => (
                   <TableRow key={referral.id}>
                     <TableCell className="font-medium">
                       {referral.referrer?.email}
