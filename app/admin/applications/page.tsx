@@ -109,7 +109,7 @@ export default async function ApplicationsAdminPage() {
               <Users className="w-5 h-5 text-blue-600" />
               <span className="text-sm text-gray-600">Total</span>
             </div>
-            <p className="text-2xl font-bold mt-1">{stats.total}</p>
+            <p className="text-2xl font-bold mt-1">{stats?.total ?? 0}</p>
           </CardContent>
         </Card>
 
@@ -119,7 +119,7 @@ export default async function ApplicationsAdminPage() {
               <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
               <span className="text-sm text-gray-600">Pending</span>
             </div>
-            <p className="text-2xl font-bold mt-1">{stats.pending}</p>
+            <p className="text-2xl font-bold mt-1">{stats?.pending ?? 0}</p>
           </CardContent>
         </Card>
 
@@ -129,7 +129,7 @@ export default async function ApplicationsAdminPage() {
               <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
               <span className="text-sm text-gray-600">Interview</span>
             </div>
-            <p className="text-2xl font-bold mt-1">{stats.interview}</p>
+            <p className="text-2xl font-bold mt-1">{stats?.interview ?? 0}</p>
           </CardContent>
         </Card>
 
@@ -139,7 +139,7 @@ export default async function ApplicationsAdminPage() {
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
               <span className="text-sm text-gray-600">Approved</span>
             </div>
-            <p className="text-2xl font-bold mt-1">{stats.approved}</p>
+            <p className="text-2xl font-bold mt-1">{stats?.approved ?? 0}</p>
           </CardContent>
         </Card>
 
@@ -149,7 +149,7 @@ export default async function ApplicationsAdminPage() {
               <div className="w-2 h-2 bg-red-500 rounded-full"></div>
               <span className="text-sm text-gray-600">Rejected</span>
             </div>
-            <p className="text-2xl font-bold mt-1">{stats.rejected}</p>
+            <p className="text-2xl font-bold mt-1">{stats?.rejected ?? 0}</p>
           </CardContent>
         </Card>
       </div>
