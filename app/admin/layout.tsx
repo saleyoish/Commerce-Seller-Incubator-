@@ -1,11 +1,33 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { createServerSideSupabase } from '@/lib/supabase-server';
+import { redirect } from 'next/navigation';
 
-export default function AdminLayout({
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Check if user is authenticated
+  const supabase = await createServerSideSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect('/login?redirect=/admin');
+  }
+
+  // Check if user is admin
+  const { data: admin } = await supabase
+    .from('admins')
+    .select('id')
+    .eq('user_id', user.id)
+    .single();
+
+  if (!admin) {
+    // Not an admin, redirect to dashboard
+    redirect('/dashboard');
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Admin Header */}
