@@ -173,14 +173,14 @@ export default async function ApplicationsAdminPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {applications.length === 0 ? (
+              {applications?.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8">
                     No applications yet
                   </TableCell>
                 </TableRow>
               ) : (
-                applications.map((app) => (
+                applications?.map((app) => (
                   <TableRow key={app.id}>
                     <TableCell className="font-medium">
                       {app.full_name}
