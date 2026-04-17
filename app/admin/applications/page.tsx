@@ -232,15 +232,17 @@ export default async function ApplicationsAdminPage() {
                       <div className="flex gap-2">
                         {/* View Details Dialog */}
                         <Dialog>
-                          <DialogTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-blue-600 hover:bg-blue-50"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                          </DialogTrigger>
+                          <DialogTrigger
+                            render={
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-blue-600 hover:bg-blue-50"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                            }
+                          />
                           <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                             <DialogHeader>
                               <DialogTitle>Application Details</DialogTitle>
