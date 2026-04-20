@@ -89,7 +89,7 @@ export default function AdminSalesPage() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${stats.totalGMV.toFixed(2)}</div>
+            <div className="text-2xl font-bold">${(stats?.totalGMV ?? 0).toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">Gross Merchandise Value</p>
           </CardContent>
         </Card>
@@ -100,7 +100,7 @@ export default function AdminSalesPage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${stats.totalRevenue.toFixed(2)}</div>
+            <div className="text-2xl font-bold">${(stats?.totalRevenue ?? 0).toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">{PLATFORM_CONFIG.PLATFORM_FEE_PERCENT}% commission</p>
           </CardContent>
         </Card>
@@ -111,7 +111,7 @@ export default function AdminSalesPage() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalSales}</div>
+            <div className="text-2xl font-bold">{stats?.totalSales ?? 0}</div>
             <p className="text-xs text-muted-foreground">Completed transactions</p>
           </CardContent>
         </Card>

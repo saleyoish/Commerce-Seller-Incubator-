@@ -133,9 +133,9 @@ export default async function TikTokAdminPage() {
               <Store className="w-5 h-5 text-blue-600" />
               <span className="text-sm text-gray-600">Connections</span>
             </div>
-            <p className="text-2xl font-bold mt-1">{stats.totalConnections}</p>
+            <p className="text-2xl font-bold mt-1">{stats?.totalConnections ?? 0}</p>
             <p className="text-xs text-green-600">
-              {stats.activeConnections} active
+              {stats?.activeConnections ?? 0} active
             </p>
           </CardContent>
         </Card>
@@ -146,9 +146,9 @@ export default async function TikTokAdminPage() {
               <Package className="w-5 h-5 text-purple-600" />
               <span className="text-sm text-gray-600">Products</span>
             </div>
-            <p className="text-2xl font-bold mt-1">{stats.totalProducts}</p>
+            <p className="text-2xl font-bold mt-1">{stats?.totalProducts ?? 0}</p>
             <p className="text-xs text-green-600">
-              {stats.syncedProducts} synced
+              {stats?.syncedProducts ?? 0} synced
             </p>
           </CardContent>
         </Card>
@@ -159,8 +159,8 @@ export default async function TikTokAdminPage() {
               <ShoppingCart className="w-5 h-5 text-orange-600" />
               <span className="text-sm text-gray-600">Orders</span>
             </div>
-            <p className="text-2xl font-bold mt-1">{stats.totalOrders}</p>
-            <p className="text-xs text-orange-600">{stats.pendingOrders} pending</p>
+            <p className="text-2xl font-bold mt-1">{stats?.totalOrders ?? 0}</p>
+            <p className="text-xs text-orange-600">{stats?.pendingOrders ?? 0} pending</p>
           </CardContent>
         </Card>
       </div>
@@ -185,14 +185,14 @@ export default async function TikTokAdminPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {connections.length === 0 ? (
+              {connections?.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8">
                     No TikTok Shop connections yet
                   </TableCell>
                 </TableRow>
               ) : (
-                connections.map((conn: any) => (
+                connections?.map((conn: any) => (
                   <TableRow key={conn.id}>
                     <TableCell className="font-medium">
                       {conn.seller?.email}
@@ -269,14 +269,14 @@ export default async function TikTokAdminPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {recentSyncs.length === 0 ? (
+              {recentSyncs?.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8">
                     No sync operations yet
                   </TableCell>
                 </TableRow>
               ) : (
-                recentSyncs.map((sync: any) => (
+                recentSyncs?.map((sync: any) => (
                   <TableRow key={sync.id}>
                     <TableCell className="capitalize">
                       {sync.sync_type.replace("_", " ")}

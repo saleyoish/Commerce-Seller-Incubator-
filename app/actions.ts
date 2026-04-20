@@ -13,11 +13,11 @@ export async function submitWaitlistAction(formData: FormData) {
   const consent = formData.get("consent") === "on";
 
   if (!name || !email || !phone || !whatYouSell) {
-    return { error: "Please fill in all required fields" };
+    throw new Error("Please fill in all required fields");
   }
 
   if (!consent) {
-    return { error: "You must agree to receive emails" };
+    throw new Error("You must agree to receive emails");
   }
 
   const supabase = await createServerSideSupabase();
@@ -30,7 +30,7 @@ export async function submitWaitlistAction(formData: FormData) {
     .single();
 
   if (existing) {
-    return { error: "This email is already on our waitlist" };
+    throw new Error("This email is already on our waitlist");
   }
 
   // Insert into waitlist
@@ -49,7 +49,7 @@ export async function submitWaitlistAction(formData: FormData) {
 
   if (error) {
     console.error("Waitlist submission error:", error);
-    return { error: "Failed to submit. Please try again." };
+    throw new Error("Failed to submit. Please try again.");
   }
 
   // Send confirmation email

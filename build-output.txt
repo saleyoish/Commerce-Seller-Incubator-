@@ -1,0 +1,29 @@
+﻿Γû▓ Next.js 16.2.3 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+node.exe : 
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+> Build error occurred
+Error: Turbopack build failed with 1 errors:
+./app/dashboard/earnings/page.tsx:412:23
+Expected '</', got 'jsx text'
+  [90m410 |[0m                   <th className=[32m"text-center py-3 px-4 text-sm font-medium"[0m>[33mStatus[0m</th>
+  [90m411 |[0m                 </tr>
+[31m[1m>[0m [90m412 |[0m               </thead>
+  [90m    |[0m                       [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[31m[1m>[0m [90m413 |[0m               <tbody>
+  [90m    |[0m [31m[1m^^^^^^^^^^^^^^[0m
+  [90m414 |[0m                 {filteredSales.slice([35m0[0m, [35m50[0m).map((sale) => (
+  [90m415 |[0m                   <tr key={sale.id} className=[32m"border-b hover:bg-gray-50"[0m>
+  [90m416 |[0m                     <td className=[32m"py-3 px-4 text-sm"[0m>
+
+Parsing ecmascript source code failed
+
+
+    at <unknown> (./app/dashboard/earnings/page.tsx:412:23)

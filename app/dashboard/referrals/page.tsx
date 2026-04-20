@@ -104,7 +104,7 @@ export default async function ReferralsPage() {
     );
   }
 
-  const referralLink = `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/ref/${seller.referral_code}`;
+  const referralLink = `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/ref/${seller?.referral_code || ""}`;
 
   return (
     <div className="max-w-6xl mx-auto p-6">
@@ -123,7 +123,7 @@ export default async function ReferralsPage() {
               <Users className="w-5 h-5 text-blue-600" />
               <span className="text-sm text-gray-600">Total Referrals</span>
             </div>
-            <p className="text-2xl font-bold mt-1">{stats.total}</p>
+            <p className="text-2xl font-bold mt-1">{stats?.total ?? 0}</p>
           </CardContent>
         </Card>
 
@@ -133,7 +133,7 @@ export default async function ReferralsPage() {
               <CheckCircle className="w-5 h-5 text-green-600" />
               <span className="text-sm text-gray-600">Approved</span>
             </div>
-            <p className="text-2xl font-bold mt-1">{stats.approved}</p>
+            <p className="text-2xl font-bold mt-1">{stats?.approved ?? 0}</p>
           </CardContent>
         </Card>
 
@@ -143,7 +143,7 @@ export default async function ReferralsPage() {
               <TrendingUp className="w-5 h-5 text-purple-600" />
               <span className="text-sm text-gray-600">Active Sellers</span>
             </div>
-            <p className="text-2xl font-bold mt-1">{stats.active}</p>
+            <p className="text-2xl font-bold mt-1">{stats?.active ?? 0}</p>
           </CardContent>
         </Card>
 
@@ -154,7 +154,7 @@ export default async function ReferralsPage() {
               <span className="text-sm text-gray-600">Total Earned</span>
             </div>
             <p className="text-2xl font-bold mt-1">
-              ${stats.totalEarnings.toFixed(2)}
+              ${(stats?.totalEarnings ?? 0).toFixed(2)}
             </p>
           </CardContent>
         </Card>
@@ -249,7 +249,7 @@ export default async function ReferralsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {referrals.length === 0 ? (
+              {referrals?.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-8">
                     <div className="text-center">
@@ -261,7 +261,7 @@ export default async function ReferralsPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                referrals.map((referral) => (
+                referrals?.map((referral) => (
                   <TableRow key={referral.id}>
                     <TableCell className="font-medium">
                       {referral.referred_email}
@@ -311,7 +311,7 @@ export default async function ReferralsPage() {
       </Card>
 
       {/* Pending Earnings */}
-      {stats.pendingEarnings > 0 && (
+      {(stats?.pendingEarnings ?? 0) > 0 && (
         <Card className="mt-8 bg-yellow-50 border-yellow-200">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -325,7 +325,7 @@ export default async function ReferralsPage() {
                 </p>
               </div>
               <p className="text-2xl font-bold text-yellow-800">
-                ${stats.pendingEarnings.toFixed(2)}
+                ${(stats?.pendingEarnings ?? 0).toFixed(2)}
               </p>
             </div>
           </CardContent>

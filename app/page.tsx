@@ -367,13 +367,13 @@ export default function Home() {
 
                 <div className="space-y-3">
                   <Label>Have you done live selling before? *</Label>
-                  <RadioGroup name="hasLiveExperience" defaultValue="no" className="flex gap-6">
+                  <RadioGroup defaultValue="no" className="flex gap-6">
                     <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="yes" id="yes-experience" />
+                      <RadioGroupItem name="hasLiveExperience" value="yes" id="yes-experience" />
                       <Label htmlFor="yes-experience" className="cursor-pointer">Yes</Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="no" id="no-experience" />
+                      <RadioGroupItem name="hasLiveExperience" value="no" id="no-experience" />
                       <Label htmlFor="no-experience" className="cursor-pointer">No</Label>
                     </div>
                   </RadioGroup>

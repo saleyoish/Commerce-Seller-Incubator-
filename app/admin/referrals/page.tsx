@@ -194,14 +194,14 @@ export default async function ReferralsAdminPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {topReferrers?.length === 0 ? (
+              {topReferrers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8">
                     No referrals yet
                   </TableCell>
                 </TableRow>
               ) : (
-                topReferrers?.map((referrer: any, index: number) => (
+                topReferrers.map((referrer: any, index: number) => (
                   <TableRow key={referrer.referrer_id}>
                     <TableCell>
                       {index === 0 && <span className="text-2xl">🥇</span>}

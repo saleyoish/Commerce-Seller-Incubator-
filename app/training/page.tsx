@@ -280,7 +280,7 @@ export default async function TrainingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-4">
             <div className="flex-1">
-              <Progress value={progressPercentage} className="h-3" />
+              <Progress value={progressPercentage ?? 0} className="h-3" />
             </div>
             <span className="text-sm font-medium text-gray-600">
               {progressPercentage}%
@@ -301,7 +301,7 @@ export default async function TrainingPage() {
               <CardContent className="p-0">
                 <div className="divide-y">
                   {trainingModules.map((module, index) => {
-                    const isCompleted = completedModules.has(module.id);
+                    const isCompleted = completedModules?.has(module.id) ?? false;
                     const Icon = module.icon;
 
                     return (
@@ -353,7 +353,7 @@ export default async function TrainingPage() {
           {/* Module Content */}
           <div className="lg:col-span-2 space-y-8">
             {trainingModules.map((module) => {
-              const isCompleted = completedModules.has(module.id);
+              const isCompleted = completedModules?.has(module.id) ?? false;
               const Icon = module.icon;
 
               return (

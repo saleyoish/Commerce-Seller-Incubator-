@@ -97,7 +97,7 @@ export default async function WaitlistAdminPage() {
               <Users className="w-5 h-5 text-blue-600" />
               <span className="text-sm text-gray-600">Total</span>
             </div>
-            <p className="text-2xl font-bold mt-1">{stats.total}</p>
+            <p className="text-2xl font-bold mt-1">{stats?.total ?? 0}</p>
           </CardContent>
         </Card>
 
@@ -107,7 +107,7 @@ export default async function WaitlistAdminPage() {
               <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
               <span className="text-sm text-gray-600">Pending</span>
             </div>
-            <p className="text-2xl font-bold mt-1">{stats.pending}</p>
+            <p className="text-2xl font-bold mt-1">{stats?.pending ?? 0}</p>
           </CardContent>
         </Card>
 
@@ -117,7 +117,7 @@ export default async function WaitlistAdminPage() {
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
               <span className="text-sm text-gray-600">Approved</span>
             </div>
-            <p className="text-2xl font-bold mt-1">{stats.approved}</p>
+            <p className="text-2xl font-bold mt-1">{stats?.approved ?? 0}</p>
           </CardContent>
         </Card>
 
@@ -127,7 +127,7 @@ export default async function WaitlistAdminPage() {
               <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
               <span className="text-sm text-gray-600">Contacted</span>
             </div>
-            <p className="text-2xl font-bold mt-1">{stats.contacted}</p>
+            <p className="text-2xl font-bold mt-1">{stats?.contacted ?? 0}</p>
           </CardContent>
         </Card>
 
@@ -137,7 +137,7 @@ export default async function WaitlistAdminPage() {
               <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
               <span className="text-sm text-gray-600">With Experience</span>
             </div>
-            <p className="text-2xl font-bold mt-1">{stats.withExperience}</p>
+            <p className="text-2xl font-bold mt-1">{stats?.withExperience ?? 0}</p>
           </CardContent>
         </Card>
       </div>
@@ -161,14 +161,14 @@ export default async function WaitlistAdminPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {waitlist.length === 0 ? (
+              {waitlist?.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8">
                     No waitlist entries yet
                   </TableCell>
                 </TableRow>
               ) : (
-                waitlist.map((entry) => (
+                waitlist?.map((entry) => (
                   <TableRow key={entry.id}>
                     <TableCell className="font-medium">{entry.name}</TableCell>
                     <TableCell>{entry.email}</TableCell>
