@@ -41,6 +41,7 @@ export default function FacebookSetupPage() {
   const [formData, setFormData] = useState({
     pageUrl: '',
     pageName: '',
+    followerCount: '',
     step2Complete: false,
     step3Complete: false,
     step4Complete: false,

@@ -1,0 +1,1 @@
+﻿app/dashboard/platforms/facebook/page.tsx(86,35): error TS2339: Property 'followerCount' does not exist on type '{ pageUrl: string; pageName: string; step2Complete: boolean; step3Complete: boolean; step4Complete: boolean; step5Complete: boolean; }'.

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClientSideSupabase, type StreamSession, type Seller, type Product } from '@/lib/supabase-client';
 import { Button } from '@/components/ui/button';
@@ -41,7 +41,7 @@ const DURATION_OPTIONS = [
   { value: 180, label: '3 hours' },
 ];
 
-export default function SchedulePage() {
+function ScheduleContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const duplicateId = searchParams.get('duplicate');
@@ -593,5 +593,13 @@ export default function SchedulePage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function SchedulePage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
+      <ScheduleContent />
+    </Suspense>
   );
 }

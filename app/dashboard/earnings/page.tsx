@@ -357,7 +357,7 @@ export default function EarningsPage() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis type="number" />
                   <YAxis dataKey="platform" type="category" width={80} />
-                  <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+                  <Tooltip formatter={(value) => typeof value === 'number' ? `$${value.toFixed(2)}` : ''} />
                   <Bar dataKey="amount" radius={[0, 4, 4, 0]}>
                     {platformData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
@@ -381,7 +381,7 @@ export default function EarningsPage() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" tick={{ fontSize: 12 }} />
                   <YAxis />
-                  <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+                  <Tooltip formatter={(value) => typeof value === 'number' ? `$${value.toFixed(2)}` : ''} />
                   <Line 
                     type="monotone" 
                     dataKey="amount" 
@@ -472,9 +472,8 @@ export default function EarningsPage() {
                 <p className="text-gray-500">No sales found for the selected period</p>
               </div>
             )}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+          </CardContent>
+        </Card>
+      </div>
   );
 }
