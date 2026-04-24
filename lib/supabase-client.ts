@@ -15,7 +15,55 @@ if (!supabasePublishableKey) {
 }
 
 export const createClientSideSupabase = () => {
-  return createBrowserClient(supabaseUrl!, supabasePublishableKey!);
+  const client = createBrowserClient(supabaseUrl!, supabasePublishableKey!, {
+    cookies: {
+      get(name: string) {
+        if (typeof document === 'undefined') return undefined;
+        const cookie = document.cookie
+          .split('; ')
+          .find((row) => row.startsWith(`${name}=`));
+        return cookie ? cookie.split('=')[1] : undefined;
+      },
+      set(name: string, value: string, options: any) {
+        if (typeof document === 'undefined') return;
+        let cookie = `${name}=${value}`;
+        if (options.maxAge) cookie += `; Max-Age=${options.maxAge}`;
+        if (options.path) cookie += `; Path=${options.path}`;
+        if (options.domain) cookie += `; Domain=${options.domain}`;
+        if (options.secure) cookie += `; Secure`;
+        if (options.sameSite) cookie += `; SameSite=${options.sameSite}`;
+        document.cookie = cookie;
+      },
+      remove(name: string, options: any) {
+        if (typeof document === 'undefined') return;
+        document.cookie = `${name}=; Max-Age=0; Path=${options?.path || '/'}; SameSite=${options?.sameSite || 'Lax'}`;
+      },
+    },
+  });
+
+  // Handle auth errors (e.g., invalid refresh token)
+  client.auth.onAuthStateChange((event, session) => {
+    if (event === 'TOKEN_REFRESHED') {
+      console.log('Token refreshed successfully');
+    }
+  });
+
+  return client;
+};
+
+// Helper to handle auth errors gracefully
+export const handleAuthError = async (error: any) => {
+  if (error?.code === 'refresh_token_not_found' || 
+      error?.message?.includes('refresh_token_not_found') ||
+      error?.code === 'Invalid Refresh Token') {
+    console.warn('Invalid refresh token detected, signing out user');
+    const supabase = createClientSideSupabase();
+    await supabase.auth.signOut();
+    // Clear any stored auth data
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login?error=session_expired';
+    }
+  }
 };
 
 // Types for database tables

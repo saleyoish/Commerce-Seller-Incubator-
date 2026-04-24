@@ -16,14 +16,13 @@ import {
   Clock, 
   Smartphone,
   Send,
-  Play,
   TrendingUp,
   Zap,
-  Headphones,
-  ArrowRight
+  Headphones
 } from "lucide-react";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { submitWaitlistAction } from "./actions";
+import HeroButtons from "@/components/hero-buttons";
 
 export default function Home() {
   return (
@@ -51,20 +50,7 @@ export default function Home() {
                 Join our seller incubator. We handle training, tools, and commissions. 
                 Start selling on TikTok Live immediately with zero upfront costs.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Link href="#waitlist">
-                  <Button size="lg" className="bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-lg px-8">
-                    Join Waitlist
-                    <ArrowRight className="ml-2 w-5 h-5" />
-                  </Button>
-                </Link>
-                <Link href="#how-it-works">
-                  <Button size="lg" variant="outline" className="border-gray-600 text-white hover:bg-gray-800 text-lg px-8">
-                    <Play className="mr-2 w-5 h-5" />
-                    See How It Works
-                  </Button>
-                </Link>
-              </div>
+              <HeroButtons />
               
               {/* Trust badges */}
               <div className="mt-8 flex flex-wrap items-center gap-6 text-sm text-gray-400">
@@ -527,13 +513,14 @@ export default function Home() {
               </ul>
             </div>
             <div>
-              <h4 className="text-white font-semibold mb-4">Admin</h4>
+              <h4 className="text-white font-semibold mb-4">Dashboard</h4>
               <ul className="space-y-2 text-sm">
-                <li><Link href="/admin/waitlist" className="hover:text-white transition-colors">Waitlist</Link></li>
-                <li><Link href="/admin/applications" className="hover:text-white transition-colors">Applications</Link></li>
-                <li><Link href="/admin/referrals" className="hover:text-white transition-colors">Referrals</Link></li>
-                <li><Link href="/admin/training" className="hover:text-white transition-colors">Training Analytics</Link></li>
-                <li><Link href="/admin/tiktok" className="hover:text-white transition-colors">TikTok Shops</Link></li>
+                <li><Link href="/dashboard" className="hover:text-white transition-colors">My Dashboard</Link></li>
+                <li><Link href="/dashboard/earnings" className="hover:text-white transition-colors">Earnings</Link></li>
+                <li><Link href="/dashboard/products" className="hover:text-white transition-colors">Products</Link></li>
+                <li><Link href="/dashboard/sales" className="hover:text-white transition-colors">Sales</Link></li>
+                <li><Link href="/dashboard/schedule" className="hover:text-white transition-colors">Schedule</Link></li>
+                <li><Link href="/dashboard/streaming" className="hover:text-white transition-colors">Streaming Setup</Link></li>
               </ul>
             </div>
             <div>

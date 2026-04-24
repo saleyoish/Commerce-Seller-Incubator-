@@ -61,19 +61,13 @@ export default function SignupPage() {
         throw new Error(result.error || 'Signup failed');
       }
 
-      // Auto-login after signup
-      const { error: loginError } = await supabase.auth.signInWithPassword({
+      // Try to auto-login after signup (best effort)
+      await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
       });
 
-      if (loginError) {
-        // Even if auto-login fails, redirect to login page
-        router.push('/login');
-        return;
-      }
-
-      // Redirect to dashboard
+      // Always redirect to dashboard (auth check happens there)
       router.push('/dashboard?onboarding=true');
     } catch (err: any) {
       setError(err.message || 'An error occurred during signup');

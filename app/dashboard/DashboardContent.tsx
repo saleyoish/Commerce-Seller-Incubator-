@@ -34,6 +34,7 @@ export default function DashboardContent() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   
   // Stream config state
   const [streamUrl, setStreamUrl] = useState('');
@@ -76,18 +77,27 @@ export default function DashboardContent() {
     try {
       const supabase = createClientSideSupabase();
 
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      // Get current user session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
         router.push('/login');
         return;
       }
+
+      // Check if user is admin
+      const { data: adminData } = await supabase
+        .from('admins')
+        .select('id')
+        .eq('user_id', session.user.id)
+        .single();
+      setIsAdmin(!!adminData);
 
       // Get seller data
       const { data: sellerData } = await supabase
         .from('sellers')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', session.user.id)
         .single();
 
       if (!sellerData) {
@@ -231,6 +241,13 @@ export default function DashboardContent() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">Seller Dashboard</h1>
           <div className="flex gap-4">
+            {isAdmin && (
+              <Link href="/admin">
+                <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50">
+                  Switch to Admin
+                </Button>
+              </Link>
+            )}
             <Link href="/dashboard/products">
               <Button variant="outline">Manage Products</Button>
             </Link>

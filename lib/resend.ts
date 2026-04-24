@@ -1,17 +1,27 @@
 import { Resend } from 'resend';
 
 const resendApiKey = process.env.RESEND_API_KEY;
-const fromEmail = process.env.FROM_EMAIL || 'noreply@livecommerce.app';
+const fromEmail = process.env.FROM_EMAIL || 'onboarding@resend.dev';
 
-if (!resendApiKey) {
-  throw new Error('Missing RESEND_API_KEY environment variable');
-}
+// Lazy initialization - don't throw on import
+let resendInstance: Resend | null = null;
 
-export const resend = new Resend(resendApiKey);
+export const getResend = () => {
+  if (!resendInstance) {
+    if (!resendApiKey) {
+      console.error('Missing RESEND_API_KEY environment variable');
+      return null;
+    }
+    resendInstance = new Resend(resendApiKey);
+  }
+  return resendInstance;
+};
 
 // Email templates
 export const sendSellerSignupConfirmation = async (to: string, sellerName: string) => {
   try {
+    const resend = getResend();
+    if (!resend) throw new Error('Resend not initialized');
     await resend.emails.send({
       from: fromEmail,
       to,
@@ -37,6 +47,8 @@ export const sendSellerSignupConfirmation = async (to: string, sellerName: strin
 
 export const sendSellerApprovalNotification = async (to: string, sellerName: string, approved: boolean) => {
   try {
+    const resend = getResend();
+    if (!resend) throw new Error('Resend not initialized');
     const status = approved ? 'approved' : 'rejected';
     const subject = approved 
       ? 'Your Seller Account Has Been Approved!' 
@@ -64,6 +76,8 @@ export const sendSellerApprovalNotification = async (to: string, sellerName: str
 
 export const sendSaleNotification = async (to: string, sellerName: string, productName: string, amount: number) => {
   try {
+    const resend = getResend();
+    if (!resend) throw new Error('Resend not initialized');
     await resend.emails.send({
       from: fromEmail,
       to,
@@ -87,6 +101,8 @@ export const sendSaleNotification = async (to: string, sellerName: string, produ
 
 export const sendPayoutNotification = async (to: string, sellerName: string, amount: number) => {
   try {
+    const resend = getResend();
+    if (!resend) throw new Error('Resend not initialized');
     await resend.emails.send({
       from: fromEmail,
       to,
@@ -101,5 +117,41 @@ export const sendPayoutNotification = async (to: string, sellerName: string, amo
     });
   } catch (error) {
     console.error('Failed to send payout notification:', error);
+  }
+};
+
+export const sendPasswordResetEmail = async (to: string, resetUrl: string) => {
+  try {
+    const resend = getResend();
+    if (!resend) {
+      console.error('Resend not initialized - check RESEND_API_KEY env variable');
+      return { success: false, error: 'Email service not configured' };
+    }
+    console.log('Sending password reset email to:', to, 'from:', fromEmail);
+    const result = await resend.emails.send({
+      from: fromEmail,
+      to,
+      subject: 'Password Reset Request',
+      html: `
+        <h1>Password Reset</h1>
+        <p>Hi there,</p>
+        <p>We received a request to reset your password. Click the button below to reset it:</p>
+        <p style="text-align: center; margin: 30px 0;">
+          <a href="${resetUrl}" style="background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Reset Password</a>
+        </p>
+        <p>Or copy and paste this link in your browser:</p>
+        <p style="word-break: break-all; color: #3b82f6;">${resetUrl}</p>
+        <p>This link expires in 1 hour.</p>
+        <p>If you didn't request this, please ignore this email.</p>
+        <p>Best regards,<br>Live Commerce Team</p>
+      `,
+    });
+    console.log('Resend API response:', result);
+    return { success: true };
+  } catch (error: any) {
+    console.error('Failed to send password reset email:', error);
+    console.error('Resend from email:', fromEmail);
+    console.error('Resend API key configured:', !!resendApiKey);
+    return { success: false, error: error?.message || 'Unknown error' };
   }
 };

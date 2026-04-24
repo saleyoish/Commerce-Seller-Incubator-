@@ -19,6 +19,7 @@
 
 # production
 /build
+/schemas
 
 # misc
 .DS_Store
@@ -42,3 +43,26 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# unused files - can be deleted when confirmed safe
+CLAUDE.md
+proxy.ts
+/build-*.txt
+/build-*.log
+/ts-*.txt
+/tsc-*.txt
+
+# unused default Next.js assets
+/public/file.svg
+/public/globe.svg
+/public/next.svg
+/public/vercel.svg
+/public/window.svg
+
+# unused test scripts
+/scripts/test-email.js
+
+# old database schema files (keep schema.sql as active)
+/database/m2-schema.sql
+/database/m3-schema.sql
+/database/tiktok-schema.sql
+/database/migration_add_stream_fields.sql
