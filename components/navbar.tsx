@@ -3,13 +3,15 @@
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Home, LayoutDashboard, Menu, X, User, Play } from "lucide-react";
+import { Home, LayoutDashboard, Menu, X, User, Play, Sun, Moon } from "lucide-react";
 import { useState, useEffect } from 'react';
 import { createClientSideSupabase } from '@/lib/supabase-client';
+import { useTheme } from '@/components/theme-provider';
 
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
+  const { theme, toggleTheme, mounted } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -17,12 +19,10 @@ export default function Navbar() {
   useEffect(() => {
     const supabase = createClientSideSupabase();
     
-    // Check initial auth state and admin role
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setIsLoggedIn(!!session);
       
-      // Check if user is admin
       if (session) {
         const { data } = await supabase
           .from('profiles')
@@ -34,7 +34,6 @@ export default function Navbar() {
     };
     checkAuth();
     
-    // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setIsLoggedIn(!!session);
     });
@@ -52,55 +51,71 @@ export default function Navbar() {
     }
   };
 
-  // Don't show marketing navbar on admin pages
   if (pathname && pathname.startsWith('/admin')) {
     return null;
   }
 
   return (
-    <nav className="bg-white border-b sticky top-0 z-50">
+    <nav className="bg-[var(--bg-nav)] border-b border-[var(--border-default)] sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-pink-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">T</span>
+            <div className="w-8 h-8 bg-gradient-to-br from-[#7C3AED] to-[#06B6D4] rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-sm">L</span>
             </div>
-            <span className="font-bold text-gray-900">TikTok Shop Fast Track</span>
+            <span className="font-bold gradient-text text-lg">Live Commerce</span>
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-1">
             <Link href="/">
-              <Button variant="ghost" className="gap-2">
+              <Button variant="ghost" className="gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]">
                 <Home className="w-4 h-4" />
                 Home
               </Button>
             </Link>
             <Link href="/#how-it-works" onClick={(e) => scrollToSection(e, 'how-it-works')}>
-              <Button variant="ghost" className="gap-2">
+              <Button variant="ghost" className="gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]">
                 <Play className="w-4 h-4" />
                 How It Works
               </Button>
             </Link>
             {isLoggedIn && (
-              <Link href="/dashboard" className="flex items-center gap-1.5 text-sm font-medium text-slate-300 hover:text-white transition-colors">
-                <LayoutDashboard className="w-4 h-4" />
-                <span>Dashboard</span>
+              <Link href="/dashboard">
+                <Button variant="ghost" className="gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]">
+                  <LayoutDashboard className="w-4 h-4" />
+                  Dashboard
+                </Button>
               </Link>
             )}
             {isAdmin && !isAdminPage && (
               <Link href="/admin">
-                <Button variant="outline" className="gap-2 text-red-600 border-red-200 hover:bg-red-50">
+                <Button variant="outline" className="gap-2 border-[var(--accent-primary)] text-[var(--accent-primary)] hover:bg-[var(--accent-primary)] hover:text-white">
                   <LayoutDashboard className="w-4 h-4" />
-                  Switch to Admin
+                  Admin
                 </Button>
               </Link>
             )}
+            
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] hover:border-[var(--border-bright)] transition-all ml-2"
+              aria-label="Toggle theme"
+              suppressHydrationWarning
+            >
+              {mounted ? (
+                theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />
+              ) : (
+                <Sun className="w-4 h-4" /> // Default to sun for SSR (dark mode -> light icon)
+              )}
+            </button>
+            
             {isLoggedIn ? (
               <Button 
                 variant="ghost" 
-                className="gap-2"
+                className="gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] ml-2"
                 onClick={async () => {
                   const supabase = createClientSideSupabase();
                   await supabase.auth.signOut();
@@ -113,40 +128,50 @@ export default function Navbar() {
               </Button>
             ) : (
               <Link href="/login">
-                <Button variant="ghost" className="gap-2">
+                <Button variant="ghost" className="gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] ml-2">
                   <User className="w-4 h-4" />
                   Log In
                 </Button>
               </Link>
             )}
             {!isLoggedIn && (
-              <Link href="/signup">
-                <Button className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white border-0 text-sm font-medium px-5 h-10">
+              <Link href="/signup" className="ml-2">
+                <button className="btn-primary text-sm">
                   Sign up as Seller
-                </Button>
+                </button>
               </Link>
             )}
           </div>
 
           {/* Mobile Menu Button */}
-          <button
-            className="md:hidden p-2"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          >
-            {isMobileMenuOpen ? (
-              <X className="w-6 h-6" />
-            ) : (
-              <Menu className="w-6 h-6" />
-            )}
-          </button>
+          <div className="md:hidden flex items-center gap-2">
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg border border-[var(--border-default)] text-[var(--text-secondary)]"
+              aria-label="Toggle theme"
+              suppressHydrationWarning
+            >
+              {mounted ? (
+                theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />
+              ) : (
+                <Sun className="w-4 h-4" />
+              )}
+            </button>
+            <button
+              className="p-2 text-[var(--text-secondary)]"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            >
+              {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
+          </div>
         </div>
 
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden py-4 border-t space-y-2">
+          <div className="md:hidden py-4 border-t border-[var(--border-default)] space-y-1">
             <Link
               href="/"
-              className="flex items-center gap-2 py-2 text-gray-700 hover:text-gray-900"
+              className="flex items-center gap-2 py-2 px-2 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]"
               onClick={() => setIsMobileMenuOpen(false)}
             >
               <Home className="w-4 h-4" />
@@ -154,7 +179,7 @@ export default function Navbar() {
             </Link>
             <Link
               href="/#how-it-works"
-              className="flex items-center gap-2 py-2 text-gray-700 hover:text-gray-900"
+              className="flex items-center gap-2 py-2 px-2 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]"
               onClick={(e) => { scrollToSection(e, 'how-it-works'); setIsMobileMenuOpen(false); }}
             >
               <Play className="w-4 h-4" />
@@ -163,7 +188,7 @@ export default function Navbar() {
             {isLoggedIn && (
               <Link
                 href="/dashboard"
-                className="flex items-center gap-2 py-2 text-gray-700 hover:text-gray-900"
+                className="flex items-center gap-2 py-2 px-2 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 <LayoutDashboard className="w-4 h-4" />
@@ -173,7 +198,7 @@ export default function Navbar() {
             {isAdmin && (
               <Link
                 href="/admin"
-                className="flex items-center gap-2 py-2 text-red-600 font-semibold"
+                className="flex items-center gap-2 py-2 px-2 rounded-lg text-[var(--accent-primary)] font-semibold hover:bg-[var(--bg-raised)]"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 <LayoutDashboard className="w-4 h-4" />
@@ -182,7 +207,7 @@ export default function Navbar() {
             )}
             {isLoggedIn ? (
               <button
-                className="flex items-center gap-2 py-2 text-gray-700 hover:text-gray-900 w-full text-left"
+                className="flex items-center gap-2 py-2 px-2 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] w-full text-left"
                 onClick={async () => {
                   const supabase = createClientSideSupabase();
                   await supabase.auth.signOut();
@@ -195,23 +220,23 @@ export default function Navbar() {
                 Log Out
               </button>
             ) : (
-              <Link
-                href="/login"
-                className="flex items-center gap-2 py-2 text-gray-700 hover:text-gray-900"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                <User className="w-4 h-4" />
-                Log In
-              </Link>
-            )}
-            {!isLoggedIn && (
-              <Link
-                href="/signup"
-                className="flex items-center gap-2 py-2 text-red-600 font-semibold"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Sign up as Seller
-              </Link>
+              <>
+                <Link
+                  href="/login"
+                  className="flex items-center gap-2 py-2 px-2 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <User className="w-4 h-4" />
+                  Log In
+                </Link>
+                <Link
+                  href="/signup"
+                  className="flex items-center gap-2 py-2 px-2 rounded-lg text-[var(--accent-primary)] font-semibold hover:bg-[var(--bg-raised)]"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Sign up as Seller
+                </Link>
+              </>
             )}
           </div>
         )}

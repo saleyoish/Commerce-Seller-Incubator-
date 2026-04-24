@@ -1,14 +1,14 @@
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
 import { createServerSideSupabase } from '@/lib/supabase-server';
 import { redirect } from 'next/navigation';
+import { LogOut } from 'lucide-react';
+import AdminSidebar from './AdminSidebar';
 
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Check if user is authenticated
   const supabase = await createServerSideSupabase();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -16,7 +16,6 @@ export default async function AdminLayout({
     redirect('/login?redirect=/admin');
   }
 
-  // Check if user is admin
   const { data: admin } = await supabase
     .from('admins')
     .select('id')
@@ -24,43 +23,33 @@ export default async function AdminLayout({
     .single();
 
   if (!admin) {
-    // Not an admin, redirect to dashboard
     redirect('/dashboard');
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Admin Header */}
-      <header className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-8">
-              <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-              <nav className="flex gap-4">
-                <Link href="/admin/sellers">
-                  <Button variant="ghost">Sellers</Button>
-                </Link>
-                <Link href="/admin/products">
-                  <Button variant="ghost">Products</Button>
-                </Link>
-                <Link href="/admin/sales">
-                  <Button variant="ghost">Sales</Button>
-                </Link>
-                <Link href="/admin/payouts">
-                  <Button variant="ghost">Payouts</Button>
-                </Link>
-              </nav>
-            </div>
-            <Link href="/dashboard">
-              <Button variant="outline">Exit Admin</Button>
-            </Link>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-[var(--bg-base)] flex">
+      <AdminSidebar />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {children}
-      </main>
+      {/* Main content area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Top bar */}
+        <header className="bg-[var(--bg-nav)] border-b border-[var(--border-default)] px-6 py-4 flex items-center justify-between sticky top-0 z-30">
+          <div>
+            <h1 className="text-base font-semibold text-[var(--text-primary)]">Admin Dashboard</h1>
+            <p className="text-xs text-[var(--text-muted)]">Manage sellers, products &amp; payouts</p>
+          </div>
+          <Link href="/dashboard">
+            <button className="btn-secondary text-sm px-4 py-2 flex items-center gap-2">
+              <LogOut className="w-3.5 h-3.5" />
+              Exit Admin
+            </button>
+          </Link>
+        </header>
+
+        <main className="flex-1 p-6">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

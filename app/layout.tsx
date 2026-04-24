@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/navbar";
+import { ConditionalNavbar } from "@/components/conditional-navbar";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -14,16 +15,31 @@ export const metadata: Metadata = {
   description: "The all-in-one platform for live commerce sellers. Upload products, go live, and sell directly to your audience.",
 };
 
+const themeScript = `
+  (function() {
+    try {
+      const saved = localStorage.getItem('theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', saved);
+    } catch (e) {}
+  })();
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} font-sans h-full antialiased`}>
+    <html lang="en" className={`${inter.variable} font-sans h-full antialiased`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className={`${inter.className} min-h-full flex flex-col`}>
-        <Navbar />
-        {children}
+        <ThemeProvider>
+          <ConditionalNavbar>
+            {children}
+          </ConditionalNavbar>
+        </ThemeProvider>
       </body>
     </html>
   );

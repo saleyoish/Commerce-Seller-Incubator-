@@ -1,24 +1,25 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { 
+import {
   Video,
-  DollarSign, 
-  Users, 
-  Sparkles, 
-  CheckCircle, 
-  Clock, 
+  DollarSign,
+  Users,
+  Sparkles,
+  CheckCircle,
+  Clock,
   Smartphone,
   Send,
   TrendingUp,
   Zap,
-  Headphones
+  Headphones,
+  Play,
+  ArrowRight,
+  Star,
 } from "lucide-react";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { submitWaitlistAction } from "./actions";
@@ -26,513 +27,420 @@ import HeroButtons from "@/components/hero-buttons";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-white">
-      {/* Hero Section - Navbar is in layout.tsx */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
-        <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
-        <div className="absolute top-20 right-0 w-96 h-96 bg-gradient-to-br from-red-500/20 to-pink-500/20 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-72 h-72 bg-gradient-to-tr from-purple-500/20 to-pink-500/20 rounded-full blur-3xl"></div>
-        
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32">
+    <div className="min-h-screen bg-[var(--bg-base)]">
+
+      {/* ─── HERO ─────────────────────────────────────── */}
+      <section className="relative overflow-hidden pt-8 pb-24 lg:pt-12 lg:pb-32">
+        {/* Ambient glow blobs — purely decorative, no bg gradient */}
+        <div className="pointer-events-none absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full bg-[#7C3AED]/10 blur-[120px]" />
+        <div className="pointer-events-none absolute -bottom-40 -left-40 w-[500px] h-[500px] rounded-full bg-[#06B6D4]/8 blur-[100px]" />
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <Badge className="mb-4 bg-red-500/20 text-red-300 border-red-500/30">
-                <Sparkles className="w-3 h-3 mr-1" />
-                Now accepting applications
-              </Badge>
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
-                Turn Your Products Into
-                <span className="block bg-gradient-to-r from-red-400 via-pink-400 to-purple-400 bg-clip-text text-transparent">
+            {/* Left copy */}
+            <div className="animate-fade-in-up">
+              {/* Live badge */}
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[var(--border-default)] bg-[var(--bg-surface)] mb-6">
+                <span className="live-dot" />
+                <span className="text-[11px] uppercase tracking-widest font-medium text-[var(--accent-danger)]">Now Accepting Applications</span>
+              </div>
+
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold text-[var(--text-primary)] mb-6 leading-[1.1]">
+                Turn Your Products Into{" "}
+                <span className="gradient-text block mt-1">
                   Live Sales on TikTok Shop
                 </span>
               </h1>
-              <p className="text-xl text-gray-300 mb-8 max-w-xl">
-                Join our seller incubator. We handle training, tools, and commissions. 
+              <p className="text-lg text-[var(--text-secondary)] mb-8 max-w-xl leading-relaxed">
+                Join our seller incubator. We handle training, tools, and commissions.
                 Start selling on TikTok Live immediately with zero upfront costs.
               </p>
+
               <HeroButtons />
-              
+
               {/* Trust badges */}
-              <div className="mt-8 flex flex-wrap items-center gap-6 text-sm text-gray-400">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-400" />
-                  <span>No upfront costs</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-400" />
-                  <span>80/20 commission split</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-400" />
-                  <span>Weekly payouts</span>
-                </div>
+              <div className="mt-8 flex flex-wrap items-center gap-6 text-sm text-[var(--text-muted)]">
+                {[
+                  "No upfront costs",
+                  "80/20 commission split",
+                  "Weekly payouts",
+                ].map((item) => (
+                  <div key={item} className="flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-[var(--accent-success)]" />
+                    <span>{item}</span>
+                  </div>
+                ))}
               </div>
             </div>
-            
-            {/* Hero visual */}
-            <div className="relative hidden lg:block">
-              <div className="relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-6 shadow-2xl border border-gray-700">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                  <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                  <span className="ml-auto text-xs text-gray-500">LIVE</span>
-                </div>
-                <div className="aspect-video bg-gradient-to-br from-red-600/20 to-pink-600/20 rounded-lg flex items-center justify-center mb-4">
-                  <div className="text-center">
-                    <div className="w-16 h-16 mx-auto mb-2 bg-gradient-to-br from-red-500 to-pink-500 rounded-full flex items-center justify-center">
-                      <Video className="w-8 h-8 text-white" />
-                    </div>
-                    <p className="text-sm text-gray-400">Live Selling Session</p>
+
+            {/* Hero live-stream card */}
+            <div className="relative hidden lg:block animate-fade-in-up">
+              <div className="card-premium !p-0 overflow-hidden">
+                {/* top bar */}
+                <div className="flex items-center gap-2 px-5 py-3 border-b border-[var(--border-default)] bg-[var(--bg-raised)]">
+                  <div className="w-2.5 h-2.5 rounded-full bg-[var(--accent-danger)]" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-[var(--accent-warning)]" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-[var(--accent-success)]" />
+                  <div className="ml-auto live-indicator">
+                    <span className="live-dot" />
+                    <span className="live-text">Live</span>
                   </div>
                 </div>
-                <div className="flex justify-between text-sm text-gray-400">
-                  <span>1,234 viewers</span>
-                  <span>$5,678 sold today</span>
+                {/* stream area */}
+                <div className="aspect-video bg-[var(--bg-raised)] flex items-center justify-center relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#7C3AED]/10 via-transparent to-[#06B6D4]/10" />
+                  <div className="text-center z-10">
+                    <div className="w-16 h-16 mx-auto mb-3 bg-gradient-to-br from-[#7C3AED] to-[#06B6D4] rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(124,58,237,0.4)]">
+                      <Play className="w-7 h-7 text-white fill-white" />
+                    </div>
+                    <p className="text-sm text-[var(--text-muted)]">Live Selling Session</p>
+                  </div>
                 </div>
+                {/* stats row */}
+                <div className="flex justify-between items-center px-5 py-4 border-t border-[var(--border-default)]">
+                  <div>
+                    <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest mb-0.5">Viewers</p>
+                    <p className="text-lg font-semibold text-[var(--accent-secondary)]">1,234</p>
+                  </div>
+                  <div className="h-8 w-px bg-[var(--border-default)]" />
+                  <div>
+                    <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest mb-0.5">Sold Today</p>
+                    <p className="text-lg font-semibold text-[var(--accent-success)]">$5,678</p>
+                  </div>
+                  <div className="h-8 w-px bg-[var(--border-default)]" />
+                  <div>
+                    <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest mb-0.5">Commission</p>
+                    <p className="text-lg font-semibold text-[var(--text-primary)]">80%</p>
+                  </div>
+                </div>
+              </div>
+              {/* floating badges */}
+              <div className="absolute -bottom-4 -left-6 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl px-4 py-2.5 flex items-center gap-2 shadow-lg">
+                <Star className="w-4 h-4 text-[var(--accent-warning)]" />
+                <span className="text-sm font-medium text-[var(--text-primary)]">Top Seller This Week</span>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="bg-gray-50 border-y">
+      {/* ─── STATS ────────────────────────────────────── */}
+      <section className="border-y border-[var(--border-default)] bg-[var(--bg-surface)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            <div>
-              <div className="text-3xl md:text-4xl font-bold text-gray-900">50+</div>
-              <div className="text-sm text-gray-600 mt-1">Sellers Active</div>
-            </div>
-            <div>
-              <div className="text-3xl md:text-4xl font-bold text-gray-900">$125K</div>
-              <div className="text-sm text-gray-600 mt-1">GMV This Month</div>
-            </div>
-            <div>
-              <div className="text-3xl md:text-4xl font-bold text-gray-900">$2.4K</div>
-              <div className="text-sm text-gray-600 mt-1">Avg Seller Earnings</div>
-            </div>
-            <div>
-              <div className="text-3xl md:text-4xl font-bold text-gray-900">24h</div>
-              <div className="text-sm text-gray-600 mt-1">Avg Time to First Sale</div>
-            </div>
+            {[
+              { value: "50+", label: "Sellers Active" },
+              { value: "$125K", label: "GMV This Month" },
+              { value: "$2.4K", label: "Avg Seller Earnings" },
+              { value: "24h", label: "Avg Time to First Sale" },
+            ].map(({ value, label }) => (
+              <div key={label}>
+                <div className="text-3xl md:text-4xl font-semibold gradient-text mb-1">{value}</div>
+                <div className="text-sm text-[var(--text-muted)]">{label}</div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* How It Works */}
+      {/* ─── HOW IT WORKS ─────────────────────────────── */}
       <section id="how-it-works" className="py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            <p className="text-xs uppercase tracking-widest text-[var(--text-muted)] mb-3">Process</p>
+            <h2 className="text-3xl md:text-4xl font-semibold text-[var(--text-primary)] mb-4">
               How It Works
             </h2>
-            <p className="text-xl text-gray-600">Three simple steps to start selling</p>
+            <p className="text-[var(--text-secondary)] text-lg">Three simple steps to start selling</p>
           </div>
-          
-          <div className="grid md:grid-cols-3 gap-8 pt-6">
-            <Card className="relative border-2 border-red-100 overflow-visible">
-              <div className="absolute -top-4 left-6">
-                <div className="w-8 h-8 bg-red-600 text-white rounded-full flex items-center justify-center font-bold">
-                  1
-                </div>
-              </div>
-              <CardHeader className="pt-8">
-                <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center mb-4">
-                  <Send className="w-6 h-6 text-red-600" />
-                </div>
-                <CardTitle className="text-xl">Apply & Get Approved</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">
-                  Submit your application with details about your products and experience. 
-                  Our team reviews and approves qualified sellers within 48 hours.
-                </p>
-              </CardContent>
-            </Card>
 
-            <Card className="relative border-2 border-pink-100 overflow-visible">
-              <div className="absolute -top-4 left-6">
-                <div className="w-8 h-8 bg-pink-600 text-white rounded-full flex items-center justify-center font-bold">
-                  2
+          <div className="grid md:grid-cols-3 gap-6 pt-6">
+            {[
+              {
+                step: "01",
+                icon: Send,
+                title: "Apply & Get Approved",
+                desc: "Submit your application with product details. Our team reviews and approves qualified sellers within 48 hours.",
+                color: "var(--accent-primary)",
+              },
+              {
+                step: "02",
+                icon: Zap,
+                title: "Complete Training",
+                desc: "Access our training hub covering TikTok Shop setup, OBS configuration, live selling best practices, and more.",
+                color: "var(--accent-secondary)",
+              },
+              {
+                step: "03",
+                icon: TrendingUp,
+                title: "Go Live & Earn",
+                desc: "Start streaming on TikTok Live, showcase your products, and earn with our 80/20 commission split. Get paid weekly.",
+                color: "var(--accent-success)",
+              },
+            ].map(({ step, icon: Icon, title, desc, color }) => (
+              <div key={step} className="card-premium relative group">
+                <div className="text-[48px] font-bold text-[var(--border-default)] leading-none mb-4 transition-colors duration-200 group-hover:text-[var(--border-bright)]">
+                  {step}
                 </div>
+                <div
+                  className="w-10 h-10 rounded-lg flex items-center justify-center mb-4"
+                  style={{ background: `${color}18` }}
+                >
+                  <Icon className="w-5 h-5" style={{ color }} />
+                </div>
+                <h3 className="text-base font-semibold text-[var(--text-primary)] mb-2">{title}</h3>
+                <p className="text-sm text-[var(--text-muted)] leading-relaxed">{desc}</p>
               </div>
-              <CardHeader className="pt-8">
-                <div className="w-12 h-12 bg-pink-100 rounded-xl flex items-center justify-center mb-4">
-                  <Zap className="w-6 h-6 text-pink-600" />
-                </div>
-                <CardTitle className="text-xl">Complete Training</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">
-                  Access our comprehensive training hub covering TikTok Shop setup, 
-                  OBS configuration, live selling best practices, and more.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="relative border-2 border-purple-100 overflow-visible">
-              <div className="absolute -top-4 left-6">
-                <div className="w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold">
-                  3
-                </div>
-              </div>
-              <CardHeader className="pt-8">
-                <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-4">
-                  <TrendingUp className="w-6 h-6 text-purple-600" />
-                </div>
-                <CardTitle className="text-xl">Go Live & Earn</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">
-                  Start streaming on TikTok Live, showcase your products, and earn 
-                  with our 80/20 commission split. Get paid weekly via Stripe.
-                </p>
-              </CardContent>
-            </Card>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Benefits Section */}
-      <section className="py-24 bg-gray-50">
+      {/* ─── BENEFITS ─────────────────────────────────── */}
+      <section className="py-24 bg-[var(--bg-surface)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            <p className="text-xs uppercase tracking-widest text-[var(--text-muted)] mb-3">Why Us</p>
+            <h2 className="text-3xl md:text-4xl font-semibold text-[var(--text-primary)] mb-4">
               Why Sell With Us?
             </h2>
-            <p className="text-xl text-gray-600">Everything you need to succeed on TikTok Shop</p>
+            <p className="text-lg text-[var(--text-secondary)]">Everything you need to succeed on TikTok Shop</p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Card>
-              <CardHeader>
-                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mb-3">
-                  <DollarSign className="w-5 h-5 text-green-600" />
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[
+              { icon: DollarSign, title: "No Upfront Costs", desc: "Start selling with zero investment. We provide the platform, training, and tools.", color: "var(--accent-success)" },
+              { icon: GraduationCap, title: "Full Training Provided", desc: "Step-by-step training on TikTok Shop setup, OBS streaming, and live selling tactics.", color: "var(--accent-secondary)" },
+              { icon: Smartphone, title: "Multi-Platform Streaming", desc: "Stream to TikTok, Whatnot, YouTube, and more from a single setup.", color: "var(--accent-primary)" },
+              { icon: PercentIcon, title: "80/20 Commission Split", desc: "You keep 80% of every sale. The best split in the industry.", color: "var(--accent-danger)" },
+              { icon: Clock, title: "Weekly Payouts", desc: "Get paid weekly via Stripe. No minimum threshold for active sellers.", color: "var(--accent-warning)" },
+              { icon: Headphones, title: "Dedicated Support", desc: "Access to our Discord community and direct support from our team.", color: "var(--accent-primary)" },
+            ].map(({ icon: Icon, title, desc, color }) => (
+              <div key={title} className="card-premium">
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-4" style={{ background: `${color}18` }}>
+                  <Icon className="w-5 h-5" style={{ color }} />
                 </div>
-                <CardTitle className="text-lg">No Upfront Costs</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-600">
-                  Start selling with zero investment. We provide the platform, training, and tools.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mb-3">
-                  <GraduationCap className="w-5 h-5 text-blue-600" />
-                </div>
-                <CardTitle className="text-lg">Full Training Provided</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-600">
-                  Step-by-step training on TikTok Shop setup, OBS streaming, and live selling tactics.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mb-3">
-                  <Smartphone className="w-5 h-5 text-purple-600" />
-                </div>
-                <CardTitle className="text-lg">Multi-Platform Streaming</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-600">
-                  Stream to TikTok, Whatnot, YouTube, and more from a single setup.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mb-3">
-                  <Percent className="w-5 h-5 text-red-600" />
-                </div>
-                <CardTitle className="text-lg">80/20 Commission Split</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-600">
-                  You keep 80% of every sale. The best split in the industry.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center mb-3">
-                  <Clock className="w-5 h-5 text-yellow-600" />
-                </div>
-                <CardTitle className="text-lg">Weekly Payouts</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-600">
-                  Get paid weekly via Stripe. No minimum threshold for active sellers.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center mb-3">
-                  <Headphones className="w-5 h-5 text-indigo-600" />
-                </div>
-                <CardTitle className="text-lg">Dedicated Support</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-600">
-                  Access to our Discord community and direct support from our team.
-                </p>
-              </CardContent>
-            </Card>
+                <h3 className="text-base font-semibold text-[var(--text-primary)] mb-2">{title}</h3>
+                <p className="text-sm text-[var(--text-muted)] leading-relaxed">{desc}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Waitlist Form Section */}
+      {/* ─── WAITLIST FORM ────────────────────────────── */}
       <section id="waitlist" className="py-24">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            <p className="text-xs uppercase tracking-widest text-[var(--text-muted)] mb-3">Apply Now</p>
+            <h2 className="text-3xl md:text-4xl font-semibold text-[var(--text-primary)] mb-4">
               Join the Waitlist
             </h2>
-            <p className="text-xl text-gray-600">
+            <p className="text-lg text-[var(--text-secondary)]">
               Limited spots available. Apply now to secure your place.
             </p>
           </div>
 
-          <Card className="border-2 border-gray-200 shadow-lg">
-            <CardContent className="p-8">
-              <form action={submitWaitlistAction} className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Full Name *</Label>
-                    <Input 
-                      id="name" 
-                      name="name" 
-                      placeholder="John Doe" 
-                      required 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email *</Label>
-                    <Input 
-                      id="email" 
-                      name="email" 
-                      type="email" 
-                      placeholder="john@example.com" 
-                      required 
-                    />
-                  </div>
-                </div>
-
+          <div className="card-premium !p-8">
+            <form action={submitWaitlistAction} className="space-y-6">
+              <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number *</Label>
-                  <Input 
-                    id="phone" 
-                    name="phone" 
-                    type="tel" 
-                    placeholder="+1 (555) 123-4567" 
-                    required 
+                  <Label htmlFor="name" className="text-sm font-medium text-[var(--text-secondary)]">Full Name *</Label>
+                  <input
+                    id="name"
+                    name="name"
+                    placeholder="John Doe"
+                    required
+                    className="input-premium"
                   />
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="whatYouSell">What do you sell? *</Label>
-                  <Textarea 
-                    id="whatYouSell" 
-                    name="whatYouSell" 
-                    placeholder="Describe your products, categories, and typical price range..." 
-                    required 
-                    rows={4}
+                  <Label htmlFor="email" className="text-sm font-medium text-[var(--text-secondary)]">Email *</Label>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder="john@example.com"
+                    required
+                    className="input-premium"
                   />
                 </div>
+              </div>
 
-                <div className="space-y-3">
-                  <Label>Have you done live selling before? *</Label>
-                  <RadioGroup defaultValue="no" className="flex gap-6">
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem name="hasLiveExperience" value="yes" id="yes-experience" />
-                      <Label htmlFor="yes-experience" className="cursor-pointer">Yes</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem name="hasLiveExperience" value="no" id="no-experience" />
-                      <Label htmlFor="no-experience" className="cursor-pointer">No</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="text-sm font-medium text-[var(--text-secondary)]">Phone Number *</Label>
+                <input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  placeholder="+1 (555) 123-4567"
+                  required
+                  className="input-premium"
+                />
+              </div>
 
-                <div className="flex items-start space-x-3">
-                  <Checkbox id="consent" name="consent" required />
-                  <Label htmlFor="consent" className="text-sm leading-tight cursor-pointer">
-                    I agree to receive emails about my application and the TikTok Shop Fast Track program. 
-                    You can unsubscribe at any time.
-                  </Label>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="whatYouSell" className="text-sm font-medium text-[var(--text-secondary)]">What do you sell? *</Label>
+                <Textarea
+                  id="whatYouSell"
+                  name="whatYouSell"
+                  placeholder="Describe your products, categories, and typical price range..."
+                  required
+                  rows={4}
+                  className="input-premium resize-none"
+                />
+              </div>
 
-                <SubmitButton 
-                  className="w-full bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-lg py-6"
-                >
-                  Submit Application
-                </SubmitButton>
-              </form>
-            </CardContent>
-          </Card>
+              <div className="space-y-3">
+                <Label className="text-sm font-medium text-[var(--text-secondary)]">Have you done live selling before? *</Label>
+                <RadioGroup defaultValue="no" className="flex gap-6">
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem name="hasLiveExperience" value="yes" id="yes-experience" />
+                    <Label htmlFor="yes-experience" className="cursor-pointer text-[var(--text-secondary)]">Yes</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem name="hasLiveExperience" value="no" id="no-experience" />
+                    <Label htmlFor="no-experience" className="cursor-pointer text-[var(--text-secondary)]">No</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              <div className="flex items-start space-x-3">
+                <Checkbox id="consent" name="consent" required />
+                <Label htmlFor="consent" className="text-sm leading-tight cursor-pointer text-[var(--text-muted)]">
+                  I agree to receive emails about my application and the TikTok Shop Fast Track program.
+                  You can unsubscribe at any time.
+                </Label>
+              </div>
+
+              <SubmitButton className="w-full btn-primary text-base py-3">
+                Submit Application
+                <ArrowRight className="w-4 h-4 ml-2 inline" />
+              </SubmitButton>
+            </form>
+          </div>
         </div>
       </section>
 
-      {/* FAQ Section */}
-      <section className="py-24 bg-gray-50">
+      {/* ─── FAQ ──────────────────────────────────────── */}
+      <section className="py-24 bg-[var(--bg-surface)]">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Frequently Asked Questions</h2>
+            <p className="text-xs uppercase tracking-widest text-[var(--text-muted)] mb-3">FAQ</p>
+            <h2 className="text-3xl font-semibold text-[var(--text-primary)] mb-4">Frequently Asked Questions</h2>
           </div>
 
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">What is TikTok Shop?</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">
-                  TikTok Shop is TikTok's integrated e-commerce platform that allows sellers to showcase 
-                  and sell products directly through live streams and videos. Viewers can purchase items 
-                  without leaving the app.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Do I need my own products?</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">
-                  Yes, you need your own products to sell. We work with sellers who have existing inventory 
-                  in categories like Fashion, Beauty, Electronics, Home Goods, and more.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">How much do I earn?</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">
-                  You keep 80% of every sale. Our platform takes a 20% commission to cover payment processing, 
-                  platform tools, training, and support. Top sellers earn $5,000+ per month.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">When do I get paid?</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">
-                  We process payouts weekly via Stripe. Once you're an active seller, there's no minimum 
-                  threshold—you get paid every week for the sales you've made.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">What equipment do I need?</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">
-                  At minimum: a smartphone with a good camera and stable internet. We recommend adding 
-                  a ring light and microphone as you grow. Our training covers equipment setup in detail.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">How long until I can go live?</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">
-                  Most approved sellers complete training and go live within 3-5 days. The training is 
-                  self-paced, but we recommend completing it within your first week.
-                </p>
-              </CardContent>
-            </Card>
+          <div className="space-y-4">
+            {[
+              {
+                q: "What is TikTok Shop?",
+                a: "TikTok Shop is TikTok's integrated e-commerce platform that allows sellers to showcase and sell products directly through live streams and videos. Viewers can purchase items without leaving the app.",
+              },
+              {
+                q: "Do I need my own products?",
+                a: "Yes, you need your own products to sell. We work with sellers who have existing inventory in categories like Fashion, Beauty, Electronics, Home Goods, and more.",
+              },
+              {
+                q: "How much do I earn?",
+                a: "You keep 80% of every sale. Our platform takes a 20% commission to cover payment processing, platform tools, training, and support. Top sellers earn $5,000+ per month.",
+              },
+              {
+                q: "When do I get paid?",
+                a: "We process payouts weekly via Stripe. Once you're an active seller, there's no minimum threshold—you get paid every week for the sales you've made.",
+              },
+              {
+                q: "What equipment do I need?",
+                a: "At minimum: a smartphone with a good camera and stable internet. We recommend adding a ring light and microphone as you grow. Our training covers equipment setup in detail.",
+              },
+              {
+                q: "How long until I can go live?",
+                a: "Most approved sellers complete training and go live within 3–5 days. The training is self-paced, but we recommend completing it within your first week.",
+              },
+            ].map(({ q, a }) => (
+              <div key={q} className="card-premium">
+                <h3 className="text-base font-semibold text-[var(--text-primary)] mb-2">{q}</h3>
+                <p className="text-sm text-[var(--text-muted)] leading-relaxed">{a}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Final CTA */}
-      <section className="py-24 bg-gradient-to-br from-red-600 to-pink-600 text-white">
+      {/* ─── FINAL CTA ────────────────────────────────── */}
+      <section className="py-24">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Ready to Turn Your Products Into Live Sales?
-          </h2>
-          <p className="text-xl mb-8 text-red-100">
-            Join our community of sellers already growing with TikTok Shop
-          </p>
-          <Link href="#waitlist">
-            <Button size="lg" className="bg-white text-red-600 hover:bg-gray-100 text-lg px-12 py-6">
-              Join Waitlist Now
-            </Button>
-          </Link>
-          <p className="mt-4 text-sm text-red-200">
-            Limited spots available. Applications reviewed within 48 hours.
-          </p>
+          {/* Decorative border card */}
+          <div className="relative rounded-2xl border border-[var(--border-default)] bg-[var(--bg-surface)] px-8 py-16 overflow-hidden">
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#7C3AED]/8 via-transparent to-[#06B6D4]/8" />
+            <div className="relative z-10">
+              <div className="live-indicator justify-center mb-6">
+                <span className="live-dot" />
+                <span className="live-text">Applications Open</span>
+              </div>
+              <h2 className="text-3xl md:text-4xl font-semibold text-[var(--text-primary)] mb-4">
+                Ready to Turn Your Products Into Live Sales?
+              </h2>
+              <p className="text-lg text-[var(--text-secondary)] mb-8 max-w-xl mx-auto">
+                Join our community of sellers already growing with TikTok Shop
+              </p>
+              <Link href="#waitlist">
+                <button className="btn-primary text-base px-8 py-3 inline-flex items-center gap-2">
+                  Join Waitlist Now
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </Link>
+              <p className="mt-4 text-sm text-[var(--text-muted)]">
+                Limited spots available. Applications reviewed within 48 hours.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-gray-400 py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* ─── FOOTER ───────────────────────────────────── */}
+      <footer className="border-t border-[var(--border-default)] bg-[var(--bg-nav)]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-pink-500 rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 bg-gradient-to-br from-[#7C3AED] to-[#06B6D4] rounded-lg flex items-center justify-center">
                   <Video className="w-4 h-4 text-white" />
                 </div>
-                <span className="text-white font-bold">TikTok Shop Fast Track</span>
+                <span className="font-bold gradient-text">Live Commerce</span>
               </div>
-              <p className="text-sm">
+              <p className="text-sm text-[var(--text-muted)]">
                 Empowering sellers to succeed on TikTok Shop with training, tools, and support.
               </p>
             </div>
             <div>
-              <h4 className="text-white font-semibold mb-4">Platform</h4>
-              <ul className="space-y-2 text-sm">
-                <li><Link href="#how-it-works" className="hover:text-white transition-colors">How It Works</Link></li>
-                <li><Link href="/training" className="hover:text-white transition-colors">Training</Link></li>
-                <li><Link href="/dashboard/tiktok-shop" className="hover:text-white transition-colors">TikTok Shop</Link></li>
-                <li><Link href="/dashboard/referrals" className="hover:text-white transition-colors">My Referrals</Link></li>
+              <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-4 uppercase tracking-widest">Platform</h4>
+              <ul className="space-y-2 text-sm text-[var(--text-muted)]">
+                <li><Link href="#how-it-works" className="hover:text-[var(--text-primary)] transition-colors">How It Works</Link></li>
+                <li><Link href="/training" className="hover:text-[var(--text-primary)] transition-colors">Training</Link></li>
+                <li><Link href="/dashboard/tiktok-shop" className="hover:text-[var(--text-primary)] transition-colors">TikTok Shop</Link></li>
+                <li><Link href="/dashboard/referrals" className="hover:text-[var(--text-primary)] transition-colors">My Referrals</Link></li>
               </ul>
             </div>
             <div>
-              <h4 className="text-white font-semibold mb-4">Dashboard</h4>
-              <ul className="space-y-2 text-sm">
-                <li><Link href="/dashboard" className="hover:text-white transition-colors">My Dashboard</Link></li>
-                <li><Link href="/dashboard/earnings" className="hover:text-white transition-colors">Earnings</Link></li>
-                <li><Link href="/dashboard/products" className="hover:text-white transition-colors">Products</Link></li>
-                <li><Link href="/dashboard/sales" className="hover:text-white transition-colors">Sales</Link></li>
-                <li><Link href="/dashboard/schedule" className="hover:text-white transition-colors">Schedule</Link></li>
-                <li><Link href="/dashboard/streaming" className="hover:text-white transition-colors">Streaming Setup</Link></li>
+              <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-4 uppercase tracking-widest">Dashboard</h4>
+              <ul className="space-y-2 text-sm text-[var(--text-muted)]">
+                <li><Link href="/dashboard" className="hover:text-[var(--text-primary)] transition-colors">My Dashboard</Link></li>
+                <li><Link href="/dashboard/earnings" className="hover:text-[var(--text-primary)] transition-colors">Earnings</Link></li>
+                <li><Link href="/dashboard/products" className="hover:text-[var(--text-primary)] transition-colors">Products</Link></li>
+                <li><Link href="/dashboard/sales" className="hover:text-[var(--text-primary)] transition-colors">Sales</Link></li>
+                <li><Link href="/dashboard/schedule" className="hover:text-[var(--text-primary)] transition-colors">Schedule</Link></li>
               </ul>
             </div>
             <div>
-              <h4 className="text-white font-semibold mb-4">Legal</h4>
-              <ul className="space-y-2 text-sm">
-                <li><Link href="#" className="hover:text-white transition-colors">Privacy Policy</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors">Terms of Service</Link></li>
-                <li><Link href="#" className="hover:text-white transition-colors">Referral Terms</Link></li>
+              <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-4 uppercase tracking-widest">Legal</h4>
+              <ul className="space-y-2 text-sm text-[var(--text-muted)]">
+                <li><Link href="#" className="hover:text-[var(--text-primary)] transition-colors">Privacy Policy</Link></li>
+                <li><Link href="#" className="hover:text-[var(--text-primary)] transition-colors">Terms of Service</Link></li>
+                <li><Link href="#" className="hover:text-[var(--text-primary)] transition-colors">Referral Terms</Link></li>
               </ul>
             </div>
           </div>
-          <div className="border-t border-gray-800 pt-8 text-center text-sm">
+          <div className="border-t border-[var(--border-default)] pt-8 text-center text-sm text-[var(--text-muted)]">
             <p>© 2026 TikTok Shop Fast Track. All rights reserved.</p>
           </div>
         </div>
@@ -541,21 +449,22 @@ export default function Home() {
   );
 }
 
-// Additional icon components
+/* ─── Inline icon helpers ─────────────────────────── */
 function GraduationCap({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" />
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0v7" />
     </svg>
   );
 }
 
-function Percent({ className }: { className?: string }) {
+function PercentIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 14l6-6M7 8h.01M17 16h.01M6 6h.01m12 12h.01M6 18h.01M18 6h.01M6 12h.01M18 12h.01" />
+      <circle cx="9" cy="9" r="2" strokeWidth={2} />
+      <circle cx="15" cy="15" r="2" strokeWidth={2} />
     </svg>
   );
 }

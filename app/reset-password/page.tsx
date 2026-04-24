@@ -3,11 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientSideSupabase } from '@/lib/supabase-client';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { PasswordInput } from '@/components/ui/password-input';
+import { Sparkles, KeyRound, CheckCircle, Loader2, ArrowLeft, AlertCircle } from 'lucide-react';
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -21,76 +18,46 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     const setupSession = async () => {
       const supabase = createClientSideSupabase();
-
-      // Parse hash parameters from URL (Supabase sends token in hash)
       const hash = window.location.hash;
-      const hashParams = new URLSearchParams(hash.substring(1)); // Remove the #
+      const hashParams = new URLSearchParams(hash.substring(1));
       const accessToken = hashParams.get('access_token');
       const refreshToken = hashParams.get('refresh_token');
       const type = hashParams.get('type');
 
-      // Debug logging
       console.log('Reset password - Hash params:', { type, hasAccessToken: !!accessToken });
 
-      // Check if this is a password reset flow (type=recovery)
       if (type !== 'recovery') {
-        // Check if already have a valid session (might have been set automatically)
         const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          setIsValidToken(true);
-          setIsLoading(false);
-          return;
-        }
-        
+        if (session) { setIsValidToken(true); setIsLoading(false); return; }
         if (!accessToken) {
           setError('No reset token found. Please use the link from your email.');
-          setIsValidToken(false);
-          setIsLoading(false);
-          return;
+          setIsValidToken(false); setIsLoading(false); return;
         }
-        // If we have access token but no type, continue anyway
       }
 
-      // If we have tokens in the hash, set the session
       if (accessToken) {
         const { error: sessionError } = await supabase.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken || '',
         });
-
         if (sessionError) {
-          console.error('Session error:', sessionError);
           setError('Invalid or expired reset link. Please request a new one.');
           setIsValidToken(false);
         } else {
-          // Verify session was set correctly
           const { data: { session } } = await supabase.auth.getSession();
-          if (session) {
-            setIsValidToken(true);
-          } else {
-            setError('Failed to establish session. Please request a new reset link.');
-            setIsValidToken(false);
-          }
+          if (session) setIsValidToken(true);
+          else { setError('Failed to establish session. Please request a new reset link.'); setIsValidToken(false); }
         }
       } else {
-        // Check if already have a valid session
         const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          setIsValidToken(true);
-        } else {
-          setError('No reset token found. Please use the link from your email.');
-          setIsValidToken(false);
-        }
+        if (session) setIsValidToken(true);
+        else { setError('No reset token found. Please use the link from your email.'); setIsValidToken(false); }
       }
       setIsLoading(false);
     };
 
     setupSession();
-
-    // Listen for hash changes (in case user clicks link again or navigates)
-    const handleHashChange = () => {
-      setupSession();
-    };
+    const handleHashChange = () => setupSession();
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
@@ -105,7 +72,6 @@ export default function ResetPasswordPage() {
       setIsLoading(false);
       return;
     }
-
     if (password.length < 6) {
       setError('Password must be at least 6 characters');
       setIsLoading(false);
@@ -114,22 +80,11 @@ export default function ResetPasswordPage() {
 
     try {
       const supabase = createClientSideSupabase();
-      const { error } = await supabase.auth.updateUser({
-        password: password,
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      // Sign out after password reset
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) throw error;
       await supabase.auth.signOut();
-
       setSuccess(true);
-      // Redirect to login after 2 seconds
-      setTimeout(() => {
-        router.push('/login');
-      }, 2000);
+      setTimeout(() => router.push('/login'), 2000);
     } catch (err: any) {
       setError(err.message || 'Failed to reset password');
     } finally {
@@ -138,77 +93,91 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Set New Password</CardTitle>
-          <CardDescription>
-            Enter your new password below
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+    <div className="min-h-screen flex items-center justify-center bg-[var(--bg-base)] p-4 animate-fade-in-up">
+      <div className="w-full max-w-md">
+
+        {/* Logo */}
+        <div className="flex items-center justify-center gap-2 mb-8">
+          <div className="w-10 h-10 bg-gradient-to-br from-[#7C3AED] to-[#06B6D4] rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(124,58,237,0.3)]">
+            <Sparkles className="w-5 h-5 text-white" />
+          </div>
+          <span className="font-bold gradient-text text-xl">Live Commerce</span>
+        </div>
+
+        <div className="card-premium">
+          {/* Header */}
+          <div className="text-center pb-6 border-b border-[var(--border-default)] mb-6">
+            <div className="w-12 h-12 rounded-xl bg-[rgba(124,58,237,0.12)] flex items-center justify-center mx-auto mb-4">
+              <KeyRound className="w-6 h-6 text-[var(--accent-primary)]" />
+            </div>
+            <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Set New Password</h1>
+            <p className="text-sm text-[var(--text-muted)] mt-2">Enter your new password below</p>
+          </div>
+
+          {/* Error */}
           {error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
+            <div className="mb-5 flex items-start gap-2 px-4 py-3 rounded-lg border border-[var(--accent-danger)] bg-[rgba(239,68,68,0.08)] text-[var(--accent-danger)] text-sm">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </div>
           )}
 
+          {/* Success */}
           {success && (
-            <Alert className="mb-4 bg-green-50 border-green-200">
-              <AlertDescription className="text-green-800">
-                Password reset successful! Redirecting to login...
-              </AlertDescription>
-            </Alert>
+            <div className="mb-5 flex items-start gap-2 px-4 py-3 rounded-lg border border-[var(--accent-success)] bg-[rgba(16,185,129,0.08)] text-[var(--accent-success)] text-sm">
+              <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>Password reset successful! Redirecting to login…</span>
+            </div>
           )}
 
-          {!isValidToken && error && (
-            <div className="mt-4 text-center">
-              <a href="/forgot-password" className="text-blue-600 hover:underline text-sm">
+          {/* Validating */}
+          {isLoading && !isValidToken && !error && (
+            <div className="flex items-center justify-center gap-2 py-8 text-[var(--text-muted)] text-sm">
+              <Loader2 className="w-5 h-5 animate-spin text-[var(--accent-primary)]" />
+              <span>Validating reset link…</span>
+            </div>
+          )}
+
+          {/* Invalid token — show link to request new one */}
+          {!isLoading && !isValidToken && error && (
+            <div className="text-center mt-2">
+              <a href="/forgot-password" className="text-sm text-[var(--accent-primary)] hover:underline flex items-center justify-center gap-1">
+                <ArrowLeft className="w-4 h-4" />
                 Request new reset link
               </a>
             </div>
           )}
 
-          {!isValidToken && !error && (
-            <Alert className="mb-4">
-              <AlertDescription>Validating reset link...</AlertDescription>
-            </Alert>
-          )}
-
-          {isValidToken && (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="password">New Password</Label>
-              <Input
-                id="password"
-                type="password"
+          {/* Form */}
+          {isValidToken && !success && (
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <PasswordInput
+                label="New Password"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={6}
               />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
+              <PasswordInput
+                label="Confirm Password"
                 placeholder="••••••••"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
               />
-            </div>
-
-            <Button type="submit" className="w-full" disabled={isLoading || success}>
-              {isLoading ? 'Resetting...' : 'Reset Password'}
-            </Button>
-          </form>
+              <button
+                type="submit"
+                className="w-full btn-primary py-2.5 flex items-center justify-center gap-2 disabled:opacity-60"
+                disabled={isLoading || success}
+              >
+                {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                {isLoading ? 'Resetting…' : 'Reset Password'}
+              </button>
+            </form>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

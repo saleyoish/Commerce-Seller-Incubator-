@@ -42,7 +42,7 @@ export const createClientSideSupabase = () => {
   });
 
   // Handle auth errors (e.g., invalid refresh token)
-  client.auth.onAuthStateChange((event, session) => {
+  client.auth.onAuthStateChange((event) => {
     if (event === 'TOKEN_REFRESHED') {
       console.log('Token refreshed successfully');
     }
@@ -208,4 +208,104 @@ export type SellerRanking = {
   avg_sale_amount: number;
   last_sale_date: string | null;
   rank: number;
+};
+
+// ============================================
+// M4: Content Automation Types
+// ============================================
+
+export type StreamRecording = {
+  id: string;
+  stream_session_id: string | null;
+  seller_id: string;
+  source: 'restream' | 'manual_upload' | 'tiktok' | 'whatnot';
+  original_url: string | null;
+  storage_path: string | null;
+  file_size: number | null;
+  duration: number | null;
+  resolution: string | null;
+  format: string | null;
+  download_status: 'pending' | 'downloading' | 'completed' | 'failed';
+  processing_status: 'pending' | 'processing' | 'ready' | 'failed';
+  mux_asset_id: string | null;
+  mux_playback_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type GeneratedClip = {
+  id: string;
+  stream_recording_id: string;
+  seller_id: string;
+  clip_number: number;
+  generation_method: 'interval' | 'audio_peak' | 'mux_smart' | null;
+  start_time: number;
+  duration: number;
+  raw_clip_path: string | null;
+  final_clip_path: string | null;
+  thumbnail_path: string | null;
+  caption_file_path: string | null;
+  status: 'pending' | 'generating' | 'captioning' | 'ready' | 'failed';
+  approved: boolean;
+  approved_by: string | null;
+  approved_at: string | null;
+  rejected: boolean;
+  rejection_reason: string | null;
+  posted_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ClipCaption = {
+  id: string;
+  clip_id: string;
+  transcript_text: string | null;
+  srt_content: string | null;
+  srt_file_path: string | null;
+  language: string;
+  word_count: number | null;
+  assemblyai_transcript_id: string | null;
+  caption_style: 'classic' | 'bold' | 'minimal';
+  confidence_score: number | null;
+  created_at: string;
+};
+
+export type SocialMediaAccount = {
+  id: string;
+  seller_id: string;
+  platform: 'youtube' | 'instagram' | 'tiktok' | 'facebook';
+  platform_user_id: string | null;
+  platform_username: string | null;
+  access_token_encrypted: string | null;
+  refresh_token_encrypted: string | null;
+  token_expires_at: string | null;
+  auto_post_enabled: boolean;
+  default_caption_template: string;
+  status: 'active' | 'expired' | 'disconnected';
+  connected_at: string | null;
+  last_post_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SocialMediaPost = {
+  id: string;
+  clip_id: string | null;
+  social_media_account_id: string;
+  platform: 'youtube' | 'instagram' | 'tiktok' | 'facebook';
+  platform_post_id: string | null;
+  platform_post_url: string | null;
+  caption: string | null;
+  hashtags: string[] | null;
+  status: 'pending' | 'scheduled' | 'posting' | 'posted' | 'failed';
+  scheduled_for: string | null;
+  posted_at: string | null;
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  error_message: string | null;
+  retry_count: number;
+  created_at: string;
+  updated_at: string;
 };

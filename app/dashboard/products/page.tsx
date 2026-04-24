@@ -28,7 +28,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { X, Upload, Image as ImageIcon } from 'lucide-react';
+import { X, Upload, Image as ImageIcon, Loader2 } from 'lucide-react';
 
 const productSchema = z.object({
   name: z.string().min(1, 'Product name is required'),
@@ -235,195 +235,225 @@ export default function ProductsPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
-        return <Badge className="bg-green-100 text-green-800">Active</Badge>;
+        return <span className="pill pill-success">Active</span>;
       case 'inactive':
-        return <Badge variant="secondary">Inactive</Badge>;
+        return <span className="pill pill-pending">Inactive</span>;
       case 'deleted':
-        return <Badge variant="destructive">Deleted</Badge>;
+        return <span className="pill pill-suspended">Deleted</span>;
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return <span className="pill pill-pending">{status}</span>;
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Manage Products</h1>
-          <Button onClick={() => router.push('/dashboard')} variant="outline">
-            Back to Dashboard
-          </Button>
-        </div>
-      </header>
+    <div className="space-y-6 animate-fade-in-up">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Manage Products</h1>
+        <p className="text-[var(--text-muted)] mt-1">Upload and manage your products for live selling</p>
+      </div>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Add Product Form */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Add New Product</CardTitle>
-              <CardDescription>Upload a new product to sell</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {error && (
-                <Alert variant="destructive" className="mb-4">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Add Product Form */}
+        <Card className="card-premium">
+          <CardHeader>
+            <CardTitle className="text-[var(--text-primary)]">Add New Product</CardTitle>
+            <CardDescription className="text-[var(--text-muted)]">Upload a new product to sell</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {error && (
+              <Alert className="mb-4 bg-[rgba(239,68,68,0.1)] border-[var(--accent-danger)] text-[var(--accent-danger)]">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
 
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Product Name</Label>
-                  <Input id="name" {...register('name')} />
-                  {errors.name && (
-                    <p className="text-sm text-red-500">{errors.name.message}</p>
-                  )}
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-[var(--text-secondary)]">Product Name</Label>
+                <Input 
+                  id="name" 
+                  {...register('name')} 
+                  className="input-premium"
+                />
+                {errors.name && (
+                  <p className="text-sm text-[var(--accent-danger)]">{errors.name.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description" className="text-[var(--text-secondary)]">Description</Label>
+                <Input 
+                  id="description" 
+                  {...register('description')} 
+                  className="input-premium"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="price" className="text-[var(--text-secondary)]">Price ($)</Label>
+                <Input 
+                  id="price" 
+                  type="number" 
+                  step="0.01" 
+                  min="0" 
+                  {...register('price')} 
+                  className="input-premium"
+                />
+                {errors.price && (
+                  <p className="text-sm text-[var(--accent-danger)]">{errors.price.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="category" className="text-[var(--text-secondary)]">Category</Label>
+                <Select value={selectedCategory || ''} onValueChange={(value) => setValue('category', value || '')}>
+                  <SelectTrigger className="input-premium">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[var(--bg-surface)] border-[var(--border-default)]">
+                    {PLATFORM_CONFIG.PRODUCT_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat} value={cat} className="text-[var(--text-primary)] focus:bg-[var(--bg-raised)]">
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.category && (
+                  <p className="text-sm text-[var(--accent-danger)]">{errors.category.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="stock_quantity" className="text-[var(--text-secondary)]">Stock Quantity</Label>
+                <Input 
+                  id="stock_quantity" 
+                  type="number" 
+                  min="0" 
+                  {...register('stock_quantity')} 
+                  className="input-premium"
+                />
+                {errors.stock_quantity && (
+                  <p className="text-sm text-[var(--accent-danger)]">{errors.stock_quantity.message}</p>
+                )}
+              </div>
+
+              {/* Image Upload */}
+              <div className="space-y-2">
+                <Label htmlFor="images" className="text-[var(--text-secondary)]">Product Images (up to {PLATFORM_CONFIG.MAX_IMAGES_PER_PRODUCT})</Label>
+                <div className="border-2 border-dashed border-[var(--border-default)] rounded-lg p-4 hover:border-[var(--accent-primary)] transition-colors">
+                  <input
+                    type="file"
+                    id="images"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    onChange={handleImageChange}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="images"
+                    className="flex flex-col items-center cursor-pointer"
+                  >
+                    <Upload className="h-8 w-8 text-[var(--text-muted)] mb-2" />
+                    <span className="text-sm text-[var(--text-secondary)]">Click to upload images</span>
+                    <span className="text-xs text-[var(--text-muted)] mt-1">
+                      Max {PLATFORM_CONFIG.MAX_IMAGE_SIZE_MB}MB per image
+                    </span>
+                  </label>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Input id="description" {...register('description')} />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="price">Price ($)</Label>
-                  <Input id="price" type="number" step="0.01" min="0" {...register('price')} />
-                  {errors.price && (
-                    <p className="text-sm text-red-500">{errors.price.message}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="category">Category</Label>
-                  <Select value={selectedCategory || ''} onValueChange={(value) => setValue('category', value || '')}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PLATFORM_CONFIG.PRODUCT_CATEGORIES.map((cat) => (
-                        <SelectItem key={cat} value={cat}>
-                          {cat}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.category && (
-                    <p className="text-sm text-red-500">{errors.category.message}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="stock_quantity">Stock Quantity</Label>
-                  <Input id="stock_quantity" type="number" min="0" {...register('stock_quantity')} />
-                  {errors.stock_quantity && (
-                    <p className="text-sm text-red-500">{errors.stock_quantity.message}</p>
-                  )}
-                </div>
-
-                {/* Image Upload */}
-                <div className="space-y-2">
-                  <Label htmlFor="images">Product Images (up to {PLATFORM_CONFIG.MAX_IMAGES_PER_PRODUCT})</Label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
-                    <input
-                      type="file"
-                      id="images"
-                      accept="image/jpeg,image/png,image/webp"
-                      multiple
-                      onChange={handleImageChange}
-                      className="hidden"
-                    />
-                    <label
-                      htmlFor="images"
-                      className="flex flex-col items-center cursor-pointer"
-                    >
-                      <Upload className="h-8 w-8 text-gray-400 mb-2" />
-                      <span className="text-sm text-gray-600">Click to upload images</span>
-                      <span className="text-xs text-gray-400 mt-1">
-                        Max {PLATFORM_CONFIG.MAX_IMAGE_SIZE_MB}MB per image
-                      </span>
-                    </label>
+                {/* Image Previews */}
+                {imagePreviewUrls.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {imagePreviewUrls.map((url, index) => (
+                      <div key={index} className="relative">
+                        <img
+                          src={url}
+                          alt={`Preview ${index + 1}`}
+                          className="w-20 h-20 object-cover rounded border border-[var(--border-default)]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(index)}
+                          className="absolute -top-1 -right-1 bg-[var(--accent-danger)] text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
+                )}
+              </div>
 
-                  {/* Image Previews */}
-                  {imagePreviewUrls.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {imagePreviewUrls.map((url, index) => (
-                        <div key={index} className="relative">
-                          <img
-                            src={url}
-                            alt={`Preview ${index + 1}`}
-                            className="w-20 h-20 object-cover rounded"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeImage(index)}
-                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+              <Button 
+                type="submit" 
+                className="w-full btn-primary" 
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Creating...
+                  </span>
+                ) : (
+                  'Add Product'
+                )}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
 
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? 'Creating...' : 'Add Product'}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-
-          {/* Products List */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Your Products</CardTitle>
-              <CardDescription>Manage your existing products</CardDescription>
-            </CardHeader>
-            <CardContent>
+        {/* Products List */}
+        <Card className="card-premium">
+          <CardHeader>
+            <CardTitle className="text-[var(--text-primary)]">Your Products</CardTitle>
+            <CardDescription className="text-[var(--text-muted)]">Manage your existing products</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Image</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Price</TableHead>
-                    <TableHead>Stock</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
+                  <TableRow className="border-[var(--border-default)] hover:bg-transparent">
+                    <TableHead className="text-[var(--text-muted)]">Image</TableHead>
+                    <TableHead className="text-[var(--text-muted)]">Name</TableHead>
+                    <TableHead className="text-[var(--text-muted)]">Price</TableHead>
+                    <TableHead className="text-[var(--text-muted)]">Stock</TableHead>
+                    <TableHead className="text-[var(--text-muted)]">Status</TableHead>
+                    <TableHead className="text-[var(--text-muted)]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {products.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-gray-500 py-8">
+                      <TableCell colSpan={6} className="text-center text-[var(--text-muted)] py-8">
                         No products yet. Add your first product!
                       </TableCell>
                     </TableRow>
                   ) : (
                     products.map((product) => (
-                      <TableRow key={product.id}>
+                      <TableRow key={product.id} className="border-[var(--border-default)] hover:bg-[var(--row-hover)]">
                         <TableCell>
                           {product.images && product.images.length > 0 ? (
                             <img
                               src={product.images[0]}
                               alt={product.name}
-                              className="w-12 h-12 object-cover rounded"
+                              className="w-12 h-12 object-cover rounded border border-[var(--border-default)]"
                             />
                           ) : (
-                            <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center">
-                              <ImageIcon className="h-6 w-6 text-gray-400" />
+                            <div className="w-12 h-12 bg-[var(--bg-raised)] rounded flex items-center justify-center border border-[var(--border-default)]">
+                              <ImageIcon className="h-6 w-6 text-[var(--text-muted)]" />
                             </div>
                           )}
                         </TableCell>
-                        <TableCell className="font-medium">{product.name}</TableCell>
-                        <TableCell>${product.price.toFixed(2)}</TableCell>
-                        <TableCell>{product.stock_quantity}</TableCell>
+                        <TableCell className="font-medium text-[var(--text-primary)]">{product.name}</TableCell>
+                        <TableCell className="text-[var(--text-secondary)]">${product.price.toFixed(2)}</TableCell>
+                        <TableCell className="text-[var(--text-secondary)]">{product.stock_quantity}</TableCell>
                         <TableCell>{getStatusBadge(product.status)}</TableCell>
                         <TableCell>
                           <Button
-                            variant="destructive"
+                            variant="ghost"
                             size="sm"
                             onClick={() => deleteProduct(product.id)}
+                            className="text-[var(--accent-danger)] hover:bg-[rgba(239,68,68,0.1)]"
                           >
                             Delete
                           </Button>
@@ -433,10 +463,10 @@ export default function ProductsPage() {
                   )}
                 </TableBody>
               </Table>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

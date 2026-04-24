@@ -20,7 +20,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Video,
-  Edit,
   Trash2,
   Copy
 } from 'lucide-react';
@@ -280,107 +279,114 @@ function ScheduleContent() {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Schedule Shows</h1>
-        <p className="text-gray-600">Plan and manage your upcoming live streams</p>
+    <div className="space-y-6 animate-fade-in-up">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Schedule Shows</h1>
+        <p className="text-[var(--text-muted)] mt-1">Plan and manage your upcoming live streams</p>
       </div>
 
       {error && (
-        <Alert variant="destructive" className="mb-6">
+        <Alert className="mb-6 bg-[rgba(239,68,68,0.1)] border-[var(--accent-danger)] text-[var(--accent-danger)]">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
       {/* Schedule New Show Button */}
-      <div className="mb-6">
-        <Button onClick={() => setShowForm(!showForm)}>
+      <div>
+        <button 
+          onClick={() => setShowForm(!showForm)}
+          className="btn-primary flex items-center gap-2"
+        >
           {showForm ? (
             <>
-              <X className="w-4 h-4 mr-2" />
+              <X className="w-4 h-4" />
               Cancel
             </>
           ) : (
             <>
-              <Plus className="w-4 h-4 mr-2" />
+              <Plus className="w-4 h-4" />
               Schedule New Show
             </>
           )}
-        </Button>
+        </button>
       </div>
 
       {/* Schedule Form */}
       {showForm && (
-        <Card className="mb-8">
+        <Card className="card-premium">
           <CardHeader>
-            <CardTitle>Schedule New Live Show</CardTitle>
-            <CardDescription>Plan your upcoming stream</CardDescription>
+            <CardTitle className="text-[var(--text-primary)]">Schedule New Live Show</CardTitle>
+            <CardDescription className="text-[var(--text-muted)]">Plan your upcoming stream</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="title">Show Title *</Label>
+                  <Label htmlFor="title" className="text-[var(--text-secondary)]">Show Title *</Label>
                   <Input
                     id="title"
                     placeholder="e.g., Weekend Collectibles Auction"
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    className="input-premium"
                     required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="date">Date *</Label>
+                  <Label htmlFor="date" className="text-[var(--text-secondary)]">Date *</Label>
                   <Input
                     id="date"
                     type="date"
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    className="input-premium"
                     required
                     min={new Date().toISOString().split('T')[0]}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="time">Time *</Label>
+                  <Label htmlFor="time" className="text-[var(--text-secondary)]">Time *</Label>
                   <Input
                     id="time"
                     type="time"
                     value={formData.time}
                     onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                    className="input-premium"
                     required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="duration">Duration *</Label>
+                  <Label htmlFor="duration" className="text-[var(--text-secondary)]">Duration *</Label>
                   <select
                     id="duration"
                     value={formData.duration}
                     onChange={(e) => setFormData({ ...formData, duration: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border rounded-md"
+                    className="w-full px-4 py-2.5 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg text-[var(--text-primary)] focus:border-[var(--accent-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
                     required
                   >
                     {DURATION_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      <option key={opt.value} value={opt.value} className="bg-[var(--bg-surface)]">{opt.label}</option>
                     ))}
                   </select>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label>Platforms *</Label>
+                <Label className="text-[var(--text-secondary)]">Platforms *</Label>
                 <div className="flex flex-wrap gap-2">
                   {PLATFORMS.map((platform) => (
                     <button
                       key={platform.id}
                       type="button"
                       onClick={() => togglePlatform(platform.id)}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all border ${
                         formData.platforms.includes(platform.id)
-                          ? platform.color
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          ? 'bg-[var(--accent-primary)] border-[var(--accent-primary)] text-white'
+                          : 'bg-transparent border-[var(--border-default)] text-[var(--text-secondary)] hover:border-[var(--accent-primary)]'
                       }`}
                     >
                       {formData.platforms.includes(platform.id) && (
@@ -393,24 +399,24 @@ function ScheduleContent() {
               </div>
 
               <div className="space-y-2">
-                <Label>Products to Feature</Label>
-                <div className="max-h-40 overflow-y-auto border rounded-lg p-3 space-y-2">
+                <Label className="text-[var(--text-secondary)]">Products to Feature</Label>
+                <div className="max-h-40 overflow-y-auto border border-[var(--border-default)] rounded-lg p-3 space-y-2 bg-[var(--bg-input)]">
                   {products.length === 0 ? (
-                    <p className="text-sm text-gray-500">No active products. Add products first.</p>
+                    <p className="text-sm text-[var(--text-muted)]">No active products. Add products first.</p>
                   ) : (
                     products.map((product) => (
                       <label
                         key={product.id}
-                        className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                        className="flex items-center gap-3 p-2 hover:bg-[var(--bg-raised)] rounded cursor-pointer"
                       >
                         <input
                           type="checkbox"
                           checked={formData.selectedProducts.includes(product.id)}
                           onChange={() => toggleProduct(product.id)}
-                          className="rounded"
+                          className="rounded border-[var(--border-default)] bg-[var(--bg-input)]"
                         />
-                        <span className="font-medium">{product.name}</span>
-                        <span className="text-sm text-gray-500">${product.price}</span>
+                        <span className="font-medium text-[var(--text-primary)]">{product.name}</span>
+                        <span className="text-sm text-[var(--text-muted)]">${product.price}</span>
                       </label>
                     ))
                   )}
@@ -418,18 +424,23 @@ function ScheduleContent() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description" className="text-[var(--text-secondary)]">Description</Label>
                 <Textarea
                   id="description"
                   placeholder="What's this show about? What will you be selling?"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   rows={3}
+                  className="input-premium"
                 />
               </div>
 
               <div className="flex gap-3">
-                <Button type="submit" disabled={isSubmitting || formData.platforms.length === 0}>
+                <Button 
+                  type="submit" 
+                  className="btn-primary"
+                  disabled={isSubmitting || formData.platforms.length === 0}
+                >
                   {isSubmitting ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -442,7 +453,12 @@ function ScheduleContent() {
                     </>
                   )}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setShowForm(false)}
+                  className="btn-secondary"
+                >
                   Cancel
                 </Button>
               </div>
@@ -452,29 +468,44 @@ function ScheduleContent() {
       )}
 
       {/* Calendar View */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <Card className="lg:col-span-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="card-premium lg:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>
+              <CardTitle className="text-[var(--text-primary)]">
                 {currentMonth.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
               </CardTitle>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => {
-                  const newDate = new Date(currentMonth);
-                  newDate.setMonth(newDate.getMonth() - 1);
-                  setCurrentMonth(newDate);
-                }}>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    const newDate = new Date(currentMonth);
+                    newDate.setMonth(newDate.getMonth() - 1);
+                    setCurrentMonth(newDate);
+                  }}
+                  className="btn-secondary px-3"
+                >
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => setCurrentMonth(new Date())}>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setCurrentMonth(new Date())}
+                  className="btn-secondary"
+                >
                   Today
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => {
-                  const newDate = new Date(currentMonth);
-                  newDate.setMonth(newDate.getMonth() + 1);
-                  setCurrentMonth(newDate);
-                }}>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    const newDate = new Date(currentMonth);
+                    newDate.setMonth(newDate.getMonth() + 1);
+                    setCurrentMonth(newDate);
+                  }}
+                  className="btn-secondary px-3"
+                >
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
@@ -483,7 +514,7 @@ function ScheduleContent() {
           <CardContent>
             <div className="grid grid-cols-7 gap-1 mb-2">
               {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                <div key={day} className="text-center text-sm font-medium text-gray-500 py-2">
+                <div key={day} className="text-center text-sm font-medium text-[var(--text-muted)] py-2">
                   {day}
                 </div>
               ))}
@@ -491,7 +522,7 @@ function ScheduleContent() {
             <div className="grid grid-cols-7 gap-1">
               {getDaysInMonth().map((day, index) => {
                 if (day === null) {
-                  return <div key={`empty-${index}`} className="h-24 bg-gray-50 rounded-lg" />;
+                  return <div key={`empty-${index}`} className="h-24 bg-[var(--bg-raised)] rounded-lg" />;
                 }
 
                 const shows = getShowsForDate(day);
@@ -502,17 +533,19 @@ function ScheduleContent() {
                   <div
                     key={day}
                     className={`h-24 border rounded-lg p-2 ${
-                      isToday ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                      isToday 
+                        ? 'border-[var(--accent-secondary)] bg-[rgba(6,182,212,0.1)]' 
+                        : 'border-[var(--border-default)] hover:border-[var(--border-bright)]'
                     }`}
                   >
-                    <div className={`text-sm font-medium mb-1 ${isToday ? 'text-blue-600' : ''}`}>
+                    <div className={`text-sm font-medium mb-1 ${isToday ? 'text-[var(--accent-secondary)]' : 'text-[var(--text-primary)]'}`}>
                       {day}
                     </div>
                     <div className="space-y-1">
                       {shows.slice(0, 2).map((show) => (
                         <div
                           key={show.id}
-                          className="text-xs bg-blue-100 text-blue-700 px-1 py-0.5 rounded truncate cursor-pointer"
+                          className="text-xs bg-[var(--accent-primary)] text-white px-1.5 py-0.5 rounded truncate cursor-pointer"
                           title={show.title}
                         >
                           {new Date(show.scheduled_start || '').toLocaleTimeString('en-US', {
@@ -522,7 +555,7 @@ function ScheduleContent() {
                         </div>
                       ))}
                       {shows.length > 2 && (
-                        <div className="text-xs text-gray-500">+{shows.length - 2} more</div>
+                        <div className="text-xs text-[var(--text-muted)]">+{shows.length - 2} more</div>
                       )}
                     </div>
                   </div>
@@ -533,35 +566,37 @@ function ScheduleContent() {
         </Card>
 
         {/* Upcoming Shows List */}
-        <Card>
+        <Card className="card-premium">
           <CardHeader>
-            <CardTitle>Upcoming Shows</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-[var(--text-primary)]">Upcoming Shows</CardTitle>
+            <CardDescription className="text-[var(--text-muted)]">
               {scheduledShows.filter(s => s.status === 'scheduled').length} scheduled
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3 max-h-96 overflow-y-auto">
               {scheduledShows.filter(s => s.status === 'scheduled').length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Video className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <div className="text-center py-8 text-[var(--text-muted)]">
+                  <div className="w-12 h-12 rounded-lg bg-[rgba(124,58,237,0.15)] flex items-center justify-center mx-auto mb-3">
+                    <Video className="w-6 h-6 text-[var(--accent-primary)]" />
+                  </div>
                   <p className="text-sm">No upcoming shows</p>
                 </div>
               ) : (
                 scheduledShows
                   .filter(s => s.status === 'scheduled')
                   .map((show) => (
-                    <div key={show.id} className="border rounded-lg p-3">
+                    <div key={show.id} className="border border-[var(--border-default)] rounded-lg p-3 bg-[var(--bg-raised)]">
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{show.title}</p>
-                          <p className="text-sm text-gray-500 flex items-center gap-1">
+                          <p className="font-medium truncate text-[var(--text-primary)]">{show.title}</p>
+                          <p className="text-sm text-[var(--text-muted)] flex items-center gap-1">
                             <Clock className="w-3 h-3" />
                             {formatDate(show.scheduled_start || '')}
                           </p>
                           <div className="flex gap-1 mt-2 flex-wrap">
                             {show.platforms.map((p) => (
-                              <Badge key={p} variant="outline" className="text-xs capitalize">
+                              <Badge key={p} variant="outline" className="text-xs capitalize border-[var(--border-default)] text-[var(--text-muted)]">
                                 {p}
                               </Badge>
                             ))}
@@ -572,13 +607,14 @@ function ScheduleContent() {
                             size="sm"
                             variant="ghost"
                             onClick={() => loadShowToDuplicate(show.id)}
+                            className="text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)]"
                           >
                             <Copy className="w-3 h-3" />
                           </Button>
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="text-red-600"
+                            className="text-[var(--accent-danger)] hover:bg-[rgba(239,68,68,0.1)]"
                             onClick={() => cancelShow(show.id)}
                           >
                             <Trash2 className="w-3 h-3" />
