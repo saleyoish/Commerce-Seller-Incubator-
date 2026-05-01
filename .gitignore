@@ -19,7 +19,6 @@
 
 # production
 /build
-/schemas
 
 # misc
 .DS_Store

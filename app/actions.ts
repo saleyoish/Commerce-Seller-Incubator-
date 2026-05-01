@@ -3,6 +3,7 @@
 import { createServerSideSupabase } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getPostHogClient } from "@/lib/posthog-server";
 
 export async function submitWaitlistAction(formData: FormData) {
   const name = formData.get("name") as string;
@@ -51,6 +52,19 @@ export async function submitWaitlistAction(formData: FormData) {
     console.error("Waitlist submission error:", error);
     throw new Error("Failed to submit. Please try again.");
   }
+
+  // Track waitlist submission
+  const posthog = getPostHogClient();
+  posthog.capture({
+    distinctId: email,
+    event: "waitlist_submitted",
+    properties: {
+      name,
+      email,
+      what_you_sell: whatYouSell,
+      has_live_experience: hasLiveExperience,
+    },
+  });
 
   // Send confirmation email
   try {

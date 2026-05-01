@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { createClientSideSupabase } from '@/lib/supabase-client';
+import posthog from 'posthog-js';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -72,6 +73,11 @@ export default function SignupPage() {
       await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
+      });
+
+      posthog.identify(data.email, { email: data.email, phone: data.phone });
+      posthog.capture('seller_signed_up', {
+        email: data.email,
       });
 
       router.push('/dashboard?onboarding=true');

@@ -240,16 +240,228 @@ CREATE TRIGGER update_social_media_posts_updated_at BEFORE UPDATE ON social_medi
 -- ============================================
 -- STORAGE BUCKETS (Run via Supabase Dashboard)
 -- ============================================
--- Bucket: stream-recordings (Private, 10GB limit)
--- Bucket: generated-clips (Public, 2GB limit)
--- Bucket: clip-thumbnails (Public, 500MB limit)
--- Bucket: captions (Private, 500MB limit)
+
+-- Bucket: stream-recordings
+-- Settings:
+--   - Public bucket: false (private)
+--   - File size limit: 10737418240 (10GB in bytes)
+--   - Allowed MIME types: video/mp4, video/quicktime, video/x-msvideo, video/webm
+--   - Auto-cleanup: Delete files older than 90 days
+--   - Organizational convention: {seller_id}/{stream_session_id}/
+
+-- Bucket: generated-clips
+-- Settings:
+--   - Public bucket: true (public)
+--   - File size limit: 2147483648 (2GB in bytes)
+--   - Allowed MIME types: video/mp4, video/quicktime, video/webm
+--   - CDN enabled: true
+--   - Auto-cleanup: Delete files older than 30 days
+--   - Organizational convention: {seller_id}/{clip_id}/
+
+-- Bucket: clip-thumbnails
+-- Settings:
+--   - Public bucket: true (public)
+--   - File size limit: 524288000 (500MB in bytes)
+--   - Allowed MIME types: image/jpeg, image/png, image/webp
+--   - CDN enabled: true
+--   - Image transformations: enabled
+--   - Organizational convention: {seller_id}/{clip_id}/
+
+-- Bucket: captions
+-- Settings:
+--   - Public bucket: false (private)
+--   - File size limit: 524288000 (500MB in bytes)
+--   - Allowed MIME types: text/plain, text/srt, application/json, application/xml
+--   - Auto-cleanup: Delete files older than 60 days
+--   - Organizational convention: {seller_id}/{clip_id}/
+
+-- ============================================
+-- STORAGE RLS POLICIES (Run after creating buckets)
+-- ============================================
+
+-- stream-recordings bucket policies (private)
+CREATE POLICY "Sellers can upload their own recordings" ON storage.objects
+  FOR INSERT WITH CHECK (
+    bucket_id = 'stream-recordings' AND 
+    auth.uid() IN (
+      SELECT user_id FROM sellers WHERE id = (storage.foldername(storage.path))[1]::uuid
+    )
+  );
+
+CREATE POLICY "Sellers can view their own recordings" ON storage.objects
+  FOR SELECT USING (
+    bucket_id = 'stream-recordings' AND 
+    auth.uid() IN (
+      SELECT user_id FROM sellers WHERE id = (storage.foldername(storage.path))[1]::uuid
+    )
+  );
+
+CREATE POLICY "Sellers can delete their own recordings" ON storage.objects
+  FOR DELETE USING (
+    bucket_id = 'stream-recordings' AND 
+    auth.uid() IN (
+      SELECT user_id FROM sellers WHERE id = (storage.foldername(storage.path))[1]::uuid
+    )
+  );
+
+CREATE POLICY "Admins full access to recordings" ON storage.objects
+  FOR ALL USING (
+    bucket_id = 'stream-recordings' AND
+    EXISTS (
+      SELECT 1 FROM admins WHERE admins.user_id = auth.uid()
+    )
+  );
+
+-- generated-clips bucket policies (public uploads, controlled by app)
+CREATE POLICY "Sellers can upload their own clips" ON storage.objects
+  FOR INSERT WITH CHECK (
+    bucket_id = 'generated-clips' AND 
+    auth.uid() IN (
+      SELECT user_id FROM sellers WHERE id = (storage.foldername(storage.path))[1]::uuid
+    )
+  );
+
+CREATE POLICY "Sellers can update their own clips" ON storage.objects
+  FOR UPDATE USING (
+    bucket_id = 'generated-clips' AND 
+    auth.uid() IN (
+      SELECT user_id FROM sellers WHERE id = (storage.foldername(storage.path))[1]::uuid
+    )
+  );
+
+CREATE POLICY "Sellers can delete their own clips" ON storage.objects
+  FOR DELETE USING (
+    bucket_id = 'generated-clips' AND 
+    auth.uid() IN (
+      SELECT user_id FROM sellers WHERE id = (storage.foldername(storage.path))[1]::uuid
+    )
+  );
+
+CREATE POLICY "Admins full access to clips" ON storage.objects
+  FOR ALL USING (
+    bucket_id = 'generated-clips' AND
+    EXISTS (
+      SELECT 1 FROM admins WHERE admins.user_id = auth.uid()
+    )
+  );
+
+-- clip-thumbnails bucket policies (public uploads, controlled by app)
+CREATE POLICY "Sellers can upload their own thumbnails" ON storage.objects
+  FOR INSERT WITH CHECK (
+    bucket_id = 'clip-thumbnails' AND 
+    auth.uid() IN (
+      SELECT user_id FROM sellers WHERE id = (storage.foldername(storage.path))[1]::uuid
+    )
+  );
+
+CREATE POLICY "Sellers can update their own thumbnails" ON storage.objects
+  FOR UPDATE USING (
+    bucket_id = 'clip-thumbnails' AND 
+    auth.uid() IN (
+      SELECT user_id FROM sellers WHERE id = (storage.foldername(storage.path))[1]::uuid
+    )
+  );
+
+CREATE POLICY "Sellers can delete their own thumbnails" ON storage.objects
+  FOR DELETE USING (
+    bucket_id = 'clip-thumbnails' AND 
+    auth.uid() IN (
+      SELECT user_id FROM sellers WHERE id = (storage.foldername(storage.path))[1]::uuid
+    )
+  );
+
+CREATE POLICY "Admins full access to thumbnails" ON storage.objects
+  FOR ALL USING (
+    bucket_id = 'clip-thumbnails' AND
+    EXISTS (
+      SELECT 1 FROM admins WHERE admins.user_id = auth.uid()
+    )
+  );
+
+-- captions bucket policies (private)
+CREATE POLICY "Sellers can upload their own captions" ON storage.objects
+  FOR INSERT WITH CHECK (
+    bucket_id = 'captions' AND 
+    auth.uid() IN (
+      SELECT user_id FROM sellers WHERE id = (storage.foldername(storage.path))[1]::uuid
+    )
+  );
+
+CREATE POLICY "Sellers can view their own captions" ON storage.objects
+  FOR SELECT USING (
+    bucket_id = 'captions' AND 
+    auth.uid() IN (
+      SELECT user_id FROM sellers WHERE id = (storage.foldername(storage.path))[1]::uuid
+    )
+  );
+
+CREATE POLICY "Sellers can update their own captions" ON storage.objects
+  FOR UPDATE USING (
+    bucket_id = 'captions' AND 
+    auth.uid() IN (
+      SELECT user_id FROM sellers WHERE id = (storage.foldername(storage.path))[1]::uuid
+    )
+  );
+
+CREATE POLICY "Sellers can delete their own captions" ON storage.objects
+  FOR DELETE USING (
+    bucket_id = 'captions' AND 
+    auth.uid() IN (
+      SELECT user_id FROM sellers WHERE id = (storage.foldername(storage.path))[1]::uuid
+    )
+  );
+
+CREATE POLICY "Admins full access to captions" ON storage.objects
+  FOR ALL USING (
+    bucket_id = 'captions' AND
+    EXISTS (
+      SELECT 1 FROM admins WHERE admins.user_id = auth.uid()
+    )
+  );
+
+-- ============================================
+-- STORAGE FUNCTIONS
+-- ============================================
+
+-- Function to get public URL for clips and thumbnails
+CREATE OR REPLACE FUNCTION get_public_url(bucket_name TEXT, file_path TEXT)
+RETURNS TEXT AS $$
+BEGIN
+  RETURN 'https://' || bucket_name || '.' || current_setting('app.supabase_url') || '/storage/v1/object/public/' || file_path;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to clean up old storage files (run via cron job)
+CREATE OR REPLACE FUNCTION cleanup_old_storage_files()
+RETURNS void AS $$
+BEGIN
+  -- Delete recordings older than 90 days
+  DELETE FROM storage.objects 
+  WHERE bucket_id = 'stream-recordings' 
+  AND created_at < NOW() - INTERVAL '90 days';
+  
+  -- Delete clips older than 30 days
+  DELETE FROM storage.objects 
+  WHERE bucket_id = 'generated-clips' 
+  AND created_at < NOW() - INTERVAL '30 days';
+  
+  -- Delete captions older than 60 days
+  DELETE FROM storage.objects 
+  WHERE bucket_id = 'captions' 
+  AND created_at < NOW() - INTERVAL '60 days';
+  
+  -- Thumbnails are kept longer (90 days) since they're small
+  DELETE FROM storage.objects 
+  WHERE bucket_id = 'clip-thumbnails' 
+  AND created_at < NOW() - INTERVAL '90 days';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================
 -- VIEWS FOR CONVENIENCE
 -- ============================================
 
--- View: Pending clips for admin moderation
+-- View: Pending clips for admin moderation (admin only)
 CREATE OR REPLACE VIEW pending_clips_for_moderation AS
 SELECT 
   gc.id,
@@ -275,7 +487,16 @@ WHERE gc.status = 'ready'
   AND gc.rejected = FALSE
 ORDER BY gc.created_at DESC;
 
--- View: Clips ready for posting
+-- Admin-only access policy for pending_clips_for_moderation
+ALTER VIEW pending_clips_for_moderation SET (security_barrier = true);
+CREATE POLICY "admin_only_pending_clips_for_moderation" ON pending_clips_for_moderation
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM admins WHERE admins.user_id = auth.uid()
+    )
+  );
+
+-- View: Clips ready for posting (admin only)
 CREATE OR REPLACE VIEW clips_ready_for_posting AS
 SELECT 
   gc.*,
@@ -293,3 +514,12 @@ JOIN social_media_accounts sma ON gc.seller_id = sma.seller_id
 WHERE gc.approved = TRUE
   AND gc.posted_at IS NULL
   AND sma.status = 'active';
+
+-- Admin-only access policy for clips_ready_for_posting
+ALTER VIEW clips_ready_for_posting SET (security_barrier = true);
+CREATE POLICY "admin_only_clips_ready_for_posting" ON clips_ready_for_posting
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM admins WHERE admins.user_id = auth.uid()
+    )
+  );

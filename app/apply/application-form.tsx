@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import posthog from "posthog-js";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -95,11 +96,16 @@ export function ApplicationForm({
       });
 
       if (response.ok) {
+        posthog.capture("application_submitted", {
+          waitlist_id: waitlistEntry.id,
+          email: waitlistEntry.email,
+        });
         setIsSubmitted(true);
       } else {
         alert("Failed to submit application. Please try again.");
       }
     } catch (error) {
+      posthog.captureException(error);
       alert("An error occurred. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -561,7 +567,16 @@ export function ApplicationForm({
             {step < totalSteps ? (
               <Button
                 type="button"
-                onClick={() => setStep(step + 1)}
+                onClick={() => {
+                  const nextStep = step + 1;
+                  posthog.capture("application_step_advanced", {
+                    from_step: step,
+                    to_step: nextStep,
+                    total_steps: totalSteps,
+                    email: waitlistEntry.email,
+                  });
+                  setStep(nextStep);
+                }}
                 className="bg-red-600 hover:bg-red-700"
               >
                 Next

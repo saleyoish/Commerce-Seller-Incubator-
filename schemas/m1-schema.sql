@@ -153,9 +153,6 @@ CREATE POLICY "admins_all_sales" ON sales
 --     bucket_id = 'product-images' AND auth.role() = 'authenticated'
 --   );
 
--- CREATE POLICY "Anyone can view product images" ON storage.objects
---   FOR SELECT USING (bucket_id = 'product-images');
-
 -- CREATE POLICY "Sellers can delete their own images" ON storage.objects
 --   FOR DELETE USING (
 --     bucket_id = 'product-images' AND 

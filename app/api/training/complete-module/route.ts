@@ -1,5 +1,6 @@
 import { createAdminSupabase } from "@/lib/supabase-admin";
 import { NextResponse } from "next/server";
+import { getPostHogClient } from "@/lib/posthog-server";
 
 export async function POST(request: Request) {
   try {
@@ -57,6 +58,16 @@ export async function POST(request: Request) {
         );
       }
     }
+
+    const posthog = getPostHogClient();
+    posthog.capture({
+      distinctId: sellerId,
+      event: "training_module_completed",
+      properties: {
+        module_id: moduleId,
+        seller_id: sellerId,
+      },
+    });
 
     return NextResponse.redirect(
       `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/training?completed=${moduleId}`

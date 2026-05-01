@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { createClientSideSupabase } from '@/lib/supabase-client';
 import { PasswordInput } from '@/components/ui/password-input';
+import posthog from 'posthog-js';
 import {
   Sparkles,
   ShieldCheck,
@@ -62,6 +63,12 @@ export default function LoginPage() {
         .select('id')
         .eq('email', data.email)
         .single();
+
+      posthog.identify(data.email, { email: data.email });
+      posthog.capture('seller_logged_in', {
+        email: data.email,
+        role: admin ? 'admin' : 'seller',
+      });
 
       router.push(admin ? '/admin' : '/dashboard');
     } catch (err: any) {
