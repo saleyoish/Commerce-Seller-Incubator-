@@ -4,8 +4,7 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // Use local directory for .next folder to improve performance
-  distDir: 'build',
+  // 🚫 distDir: 'build' wali line ko delete kar diya hai
   async rewrites() {
     return [
       {
