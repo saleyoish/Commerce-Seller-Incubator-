@@ -300,6 +300,8 @@ export default function ProductsPage() {
 
     try {
       const supabase = createClientSideSupabase();
+      
+      // Update local database
       const { error } = await supabase
         .from('products')
         .update({
@@ -399,6 +401,25 @@ export default function ProductsPage() {
         return <span className="pill pill-suspended">Deleted</span>;
       default:
         return <span className="pill pill-pending">{status}</span>;
+    }
+  };
+
+  const getSourceBadge = (sourcePlatform: string | undefined) => {
+    if (!sourcePlatform) {
+      return <span className="text-xs text-[var(--text-muted)]">Manual</span>;
+    }
+    
+    switch (sourcePlatform) {
+      case 'meta':
+        return <Badge className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs">Meta Commerce</Badge>;
+      case 'tiktok':
+        return <Badge className="bg-black text-white text-xs">TikTok</Badge>;
+      case 'whatnot':
+        return <Badge className="bg-orange-500 text-white text-xs">Whatnot</Badge>;
+      case 'youtube':
+        return <Badge className="bg-red-500 text-white text-xs">YouTube</Badge>;
+      default:
+        return <Badge variant="outline" className="text-xs">{sourcePlatform}</Badge>;
     }
   };
 
@@ -647,6 +668,7 @@ export default function ProductsPage() {
                   <TableHead className="text-[var(--text-muted)]">Price</TableHead>
                   <TableHead className="text-[var(--text-muted)]">Stock</TableHead>
                   <TableHead className="text-[var(--text-muted)]">Status</TableHead>
+                  <TableHead className="text-[var(--text-muted)]">Source</TableHead>
                   <TableHead className="text-[var(--text-muted)]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -675,11 +697,14 @@ export default function ProductsPage() {
                       <TableCell>
                         <div className="h-4 w-20 bg-slate-200 rounded" />
                       </TableCell>
+                      <TableCell>
+                        <div className="h-4 w-20 bg-slate-200 rounded" />
+                      </TableCell>
                     </TableRow>
                   ))
                 ) : filteredProducts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-[var(--text-muted)] py-8">
+                    <TableCell colSpan={8} className="text-center text-[var(--text-muted)] py-8">
                       {searchQuery ? 'No products match your search' : 'No products yet. Add your first product!'}
                     </TableCell>
                   </TableRow>
@@ -704,6 +729,7 @@ export default function ProductsPage() {
                       <TableCell className="text-[var(--text-secondary)]">${product.price.toFixed(2)}</TableCell>
                       <TableCell className="text-[var(--text-secondary)]">{product.stock_quantity}</TableCell>
                       <TableCell>{getStatusBadge(product.status)}</TableCell>
+                      <TableCell>{getSourceBadge((product as any).source_platform)}</TableCell>
                       <TableCell>
                         <div className="flex gap-2">
                           <Button

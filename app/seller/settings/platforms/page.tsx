@@ -34,22 +34,13 @@ const INTEGRATIONS = [
     description: 'Connect your YouTube channel for live streaming'
   },
   { 
-    id: 'instagram', 
-    name: 'Instagram', 
-    icon: Camera, 
-    color: 'text-pink-500', 
-    bgColor: 'bg-pink-500/10',
-    href: '/seller/platforms/instagram',
-    description: 'Connect your Instagram shop and sync products'
-  },
-  { 
-    id: 'facebook', 
-    name: 'Facebook', 
+    id: 'meta-commerce-shop', 
+    name: 'Meta Commerce Shop', 
     icon: Globe, 
     color: 'text-blue-500', 
-    bgColor: 'bg-blue-500/10',
-    href: '/seller/platforms/facebook',
-    description: 'Connect your Facebook shop and sync products'
+    bgColor: 'bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10',
+    href: '/seller/platforms/meta-commerce-shop',
+    description: 'Connect your Meta Commerce Shop (Facebook & Instagram) and sync products'
   },
   { 
     id: 'whatnot', 
@@ -102,6 +93,10 @@ export default function PlatformsSettingsPage() {
   };
 
   const getConnectionStatus = (platform: string): PlatformConnection | undefined => {
+    // For meta-commerce-shop, check for 'meta' platform in database
+    if (platform === 'meta-commerce-shop') {
+      return connections.find(c => c.platform === 'meta');
+    }
     return connections.find(c => c.platform === platform);
   };
 

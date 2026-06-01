@@ -1,11 +1,12 @@
+require('dotenv').config();
 console.log('Starting script...');
 
 const { createClient } = require('@supabase/supabase-js');
 
 console.log('Creating Supabase client...');
 
-const supabaseUrl = 'https://lrntlsdjgcukrkkxzjza.supabase.co';
-const supabaseKey = 'sb_secret_ocnfGHj3syaGvHk1toO3uQ_D5-ZNanE';
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SECRET_KEY;
 
 console.log('URL:', supabaseUrl);
 console.log('Key exists:', !!supabaseKey);

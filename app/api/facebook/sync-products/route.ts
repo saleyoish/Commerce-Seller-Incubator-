@@ -145,6 +145,11 @@ export async function POST(request: Request) {
             stock_quantity: metaProduct.stock || 0,
             images: metaProduct.imageUrl ? [metaProduct.imageUrl] : [],
             status: metaProduct.status || 'active' as const,
+            source_platform: 'meta',
+            metadata: {
+              meta_product_id: metaProduct.id,
+              meta_catalog_id: catalog.id,
+            },
           };
 
           let productId: string;

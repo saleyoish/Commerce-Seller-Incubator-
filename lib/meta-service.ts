@@ -109,7 +109,7 @@ export async function fetchCatalogProducts(catalogId: string, userAccessToken: s
   const limit = 200;
   let url = `${GRAPH_API_BASE}/${GRAPH_API_VERSION}/${encodeURIComponent(
     catalogId
-  )}/products?fields=id,name,description,price,availability,retailer_id,retailer_price,images.limit(1){url},variants,category&limit=${limit}&access_token=${encodeURIComponent(
+  )}/products?fields=id,name,description,price,availability,retailer_id,retailer_price,images.limit(1){url},variants,category,product_category,google_product_category&limit=${limit}&access_token=${encodeURIComponent(
     userAccessToken
   )}`;
 
@@ -147,7 +147,8 @@ export async function fetchCatalogProducts(catalogId: string, userAccessToken: s
       const availability = p.availability || 'in_stock';
       const status = p.product_item_approval_status || 'active';
       const variants = p.variants?.data || [];
-      const category = p.category || p.product_category || 'Other';
+      // Try multiple category fields from Meta API
+      const category = p.category || p.product_category || p.google_product_category || 'Other';
       
       console.log('[Meta Service] Raw product data:', JSON.stringify(p, null, 2));
       console.log('[Meta Service] Product price data:', {
@@ -219,6 +220,37 @@ export async function updateCatalogInventoryBatch(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ operations }),
+  });
+
+  return body;
+}
+
+/**
+ * Update a single product in Meta Commerce catalog
+ */
+export async function updateCatalogProduct(
+  catalogId: string,
+  productId: string,
+  userAccessToken: string,
+  updates: {
+    name?: string;
+    description?: string;
+    price?: number;
+    availability?: string;
+    category?: string;
+  }
+) {
+  const params = new URLSearchParams();
+  if (updates.name) params.set('name', updates.name);
+  if (updates.description) params.set('description', updates.description);
+  if (updates.price) params.set('price', String(updates.price));
+  if (updates.availability) params.set('availability', updates.availability);
+  if (updates.category) params.set('category', updates.category);
+
+  const url = `${GRAPH_API_BASE}/${GRAPH_API_VERSION}/${encodeURIComponent(catalogId)}/${encodeURIComponent(productId)}?${params.toString()}&access_token=${encodeURIComponent(userAccessToken)}`;
+
+  const body = await fetchJson(url, {
+    method: 'POST',
   });
 
   return body;
