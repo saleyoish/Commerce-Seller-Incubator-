@@ -14,18 +14,18 @@
   --bg-surface: #111118;
   --bg-raised: #1A1A24;
   --bg-nav: #0D0D14;
-  --bg-input: #0A0A0F;
+  --bg-input: #0F1117;
   
   /* Borders */
-  --border-default: #2A2A38;
-  --border-bright: #3D3D52;
+  --border-default: #34343F;
+  --border-bright: #4A4A60;
   --border-hover: #7C3AED;
   
   /* Text */
   --text-primary: #FFFFFF;
-  --text-secondary: #A0A0B8;
-  --text-muted: #5A5A72;
-  --text-placeholder: #5A5A72;
+  --text-secondary: #BAC0D6;
+  --text-muted: #9AA0B8;
+  --text-placeholder: #9AA0B8;
   
   /* Accent Colors - same in both modes */
   --accent-primary: #7C3AED;
@@ -52,12 +52,12 @@
   --secondary: #1A1A24;
   --secondary-foreground: #A0A0B8;
   --muted: #1A1A24;
-  --muted-foreground: #5A5A72;
+  --muted-foreground: #9AA0B8;
   --accent: #1A1A24;
   --accent-foreground: #FFFFFF;
   --destructive: #EF4444;
   --border: #2A2A38;
-  --input: #2A2A38;
+  --input: #2E3138;
   --ring: #7C3AED;
   --radius: 0.75rem;
 }
@@ -217,13 +217,14 @@
   
   /* Secondary Button */
   .btn-secondary {
-    @apply bg-transparent border border-[var(--border-bright)] text-[var(--text-secondary)] font-medium px-5 py-2.5 rounded-lg;
-    transition: border-color 200ms ease, color 200ms ease;
+    @apply bg-transparent border border-[var(--border-default)] text-[var(--text-secondary)] font-medium px-5 py-2.5 rounded-lg;
+    transition: border-color 200ms ease, color 200ms ease, background-color 200ms ease;
   }
   
   .btn-secondary:hover {
     border-color: var(--accent-primary);
-    color: var(--text-primary);
+    color: var(--accent-primary);
+    background-color: rgba(124, 58, 237, 0.1);
   }
   
   /* Gradient Text */
@@ -295,7 +296,8 @@
   }
   
   .nav-item.active {
-    @apply relative text-white;
+    @apply relative;
+    color: var(--accent-primary);
     background: rgba(124, 58, 237, 0.08);
   }
   

@@ -24,21 +24,35 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       .from('sellers')
       .select('id')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
-    if (!seller) {
+    // Check if user is admin (admins can access without seller record)
+    const { data: adminData } = await supabase
+      .from('admins')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (!seller && !adminData) {
       return NextResponse.json(
         { error: 'Seller not found' },
         { status: 404 }
       );
     }
 
-    // Get accounts
-    const { data: accounts, error } = await supabase
-      .from('social_media_accounts')
-      .select('*')
-      .eq('seller_id', seller.id)
-      .order('created_at', { ascending: false });
+    // Get accounts (only if seller exists)
+    let accounts: any[] = [];
+    let error = null;
+    
+    if (seller) {
+      const result = await supabase
+        .from('social_media_accounts')
+        .select('*')
+        .eq('seller_id', seller.id)
+        .order('created_at', { ascending: false });
+      accounts = result.data || [];
+      error = result.error;
+    }
 
     if (error) {
       console.error('Error fetching accounts:', error);

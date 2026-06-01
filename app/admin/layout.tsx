@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { createServerSideSupabase } from '@/lib/supabase-server';
 import { redirect } from 'next/navigation';
-import { LogOut } from 'lucide-react';
+import { LogOut, LogOut as SignOut } from 'lucide-react';
 import AdminSidebar from './AdminSidebar';
 
 export default async function AdminLayout({
@@ -38,12 +38,14 @@ export default async function AdminLayout({
             <h1 className="text-base font-semibold text-[var(--text-primary)]">Admin Dashboard</h1>
             <p className="text-xs text-[var(--text-muted)]">Manage sellers, products &amp; payouts</p>
           </div>
-          <Link href="/dashboard">
-            <button className="btn-secondary text-sm px-4 py-2 flex items-center gap-2">
-              <LogOut className="w-3.5 h-3.5" />
-              Exit Admin
-            </button>
-          </Link>
+          <div className="flex gap-2">
+            <form action="/api/auth/logout" method="POST">
+              <button type="submit" className="btn-primary text-sm px-4 py-2 flex items-center gap-2">
+                <SignOut className="w-3.5 h-3.5" />
+                Logout
+              </button>
+            </form>
+          </div>
         </header>
 
         <main className="flex-1 p-6">

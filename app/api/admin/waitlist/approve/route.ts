@@ -1,8 +1,16 @@
 import { createAdminSupabase } from "@/lib/supabase-admin";
 import { NextResponse } from "next/server";
+import {
+  generatePassword,
+  sendApprovalEmailToSeller,
+} from "@/lib/gmail";
 
 export async function POST(request: Request) {
   try {
+    console.log("=== APPROVAL API STARTED ===");
+    console.log("Gmail user:", process.env.GMAIL_USER ? "Set" : "NOT SET");
+    console.log("Gmail app password:", process.env.GMAIL_APP_PASSWORD ? "Set" : "NOT SET");
+    
     const formData = await request.formData();
     const id = formData.get("id") as string;
 
@@ -29,7 +37,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Update status to approved
+    // Update waitlist status to approved
     const { error: updateError } = await supabase
       .from("waitlist")
       .update({ status: "approved", updated_at: new Date().toISOString() })
@@ -42,56 +50,102 @@ export async function POST(request: Request) {
       );
     }
 
-    // Send application link email
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-    const applicationUrl = `${baseUrl}/apply?token=${waitlistEntry.id}`;
+    // Get the user_id from waitlist entry if exists, or find/create user
+    let userId = waitlistEntry.user_id;
+    let password: string | undefined;
+    
+    console.log("Waitlist entry user_id:", userId);
 
-    console.log("Sending email to:", waitlistEntry.email);
+    if (!userId) {
+      console.log("No user_id in waitlist, checking if auth user exists...");
+      // Check if auth user exists
+      const { data: users } = await supabase.auth.admin.listUsers();
+      const existingUser = users?.users.find((u: any) => u.email === waitlistEntry.email);
 
-    try {
-      const emailRes = await fetch(
-        `${baseUrl}/api/email/send-with-fallback`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            to: waitlistEntry.email,
-            name: waitlistEntry.name,
-            subject: "Complete Your Application - TikTok Shop Fast Track",
-            html: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <div style="background: linear-gradient(135deg, #dc2626 0%, #db2777 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
-                  <h1 style="color: white; margin: 0;">Congratulations!</h1>
-                </div>
-                <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb;">
-                  <h2>Hi ${waitlistEntry.name},</h2>
-                  <p>Your waitlist application has been <strong>approved</strong>!</p>
-                  <div style="text-align: center; margin: 30px 0;">
-                    <a href="${applicationUrl}" 
-                       style="display: inline-block; background: #dc2626; color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: bold;">
-                      Complete Application
-                    </a>
-                  </div>
-                  <p style="font-size: 12px; color: #6b7280;">
-                    Link: ${applicationUrl}
-                  </p>
-                </div>
-              </div>
-            `,
-          }),
+      if (existingUser) {
+        console.log("Found existing auth user:", existingUser.id);
+        userId = existingUser.id;
+        // Update waitlist with user_id for future
+        await supabase.from("waitlist").update({ user_id: userId }).eq("id", id);
+      } else {
+        console.log("No existing auth user found, creating new user...");
+        // Create new auth user with auto-generated password
+        password = generatePassword();
+        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+          email: waitlistEntry.email,
+          password,
+          email_confirm: true,
+        });
+
+        if (!authError && authData.user) {
+          userId = authData.user.id;
+          console.log("New auth user created:", userId);
+          // Update waitlist with user_id
+          await supabase.from("waitlist").update({ user_id: userId }).eq("id", id);
+        } else {
+          console.error("Failed to create auth user:", authError);
         }
-      );
-
-      const emailData = await emailRes.json();
-      console.log("Email API response:", emailRes.status, emailData);
-
-      if (!emailRes.ok) {
-        console.error("Email API failed:", emailData);
-      } else if (emailData.testMode) {
-        console.log("📧 Test mode: Email sent to", emailData.actualRecipient, "instead of", waitlistEntry.email);
       }
-    } catch (e) {
-      console.error("Failed to send application link email:", e);
+    } else {
+      console.log("Using existing user_id from waitlist:", userId);
+    }
+
+    // Update seller approval status if seller record exists
+    if (userId) {
+      const { data: seller } = await supabase
+        .from("sellers")
+        .select("id")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (seller) {
+        await supabase
+          .from("sellers")
+          .update({ approval_status: "approved" })
+          .eq("user_id", userId);
+      } else {
+        // Create seller record with approved status
+        await supabase.from("sellers").insert({
+          user_id: userId,
+          email: waitlistEntry.email,
+          phone: waitlistEntry.phone,
+          approval_status: "approved",
+          stripe_onboarding_status: "pending",
+        });
+      }
+
+      // If we don't have a password yet (user existed before), generate a new one
+      if (!password) {
+        password = generatePassword();
+        console.log("Generated new password for existing user");
+      }
+      
+      // Update user password
+      const { error: passwordUpdateError } = await supabase.auth.admin.updateUserById(userId, { password });
+      if (passwordUpdateError) {
+        console.error("Failed to update user password:", passwordUpdateError);
+      } else {
+        console.log("User password updated successfully for:", waitlistEntry.email);
+      }
+
+      // Send approval email with credentials to seller via Gmail
+      try {
+        console.log("Sending approval email to:", waitlistEntry.email);
+        console.log("Password length:", password?.length);
+        const result = await sendApprovalEmailToSeller(
+          waitlistEntry.email,
+          waitlistEntry.name,
+          waitlistEntry.email,
+          password
+        );
+        console.log("Email send result:", result);
+      } catch (e: any) {
+        console.error("Failed to send approval email:", e);
+        console.error("Error message:", e?.message);
+        console.error("Error stack:", e?.stack);
+      }
+    } else {
+      console.warn("No userId found, cannot send approval email or update password");
     }
 
     return NextResponse.redirect(

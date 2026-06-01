@@ -20,5 +20,10 @@ export const createAdminSupabase = () => {
       autoRefreshToken: false,
       persistSession: false,
     },
+    global: {
+      headers: {
+        'Prefer': 'return=representation'
+      }
+    }
   });
 };

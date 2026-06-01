@@ -60,6 +60,45 @@ export async function GET(request: Request) {
     const expiresAt = new Date();
     expiresAt.setSeconds(expiresAt.getSeconds() + tokens.expires_in);
 
+    // Keep a platform connection record in the generic connections table as well.
+    const platformConnectionPayload = {
+      seller_id: sellerId,
+      platform: 'tiktok',
+      status: 'connected',
+      platform_username: shopInfo.shop_name || null,
+      platform_user_id: shopInfo.shop_id || null,
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token,
+      token_expires_at: expiresAt.toISOString(),
+      metadata: {
+        shopName: shopInfo.shop_name,
+        shopId: shopInfo.shop_id,
+        region: shopInfo.region,
+        shop_status: shopInfo.shop_status || 'active',
+        granted_scopes: shopInfo.granted_scopes || ['product', 'order'],
+      },
+      connected_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data: existingPlatformConnection } = await supabase
+      .from('platform_connections')
+      .select('id')
+      .eq('seller_id', sellerId)
+      .eq('platform', 'tiktok')
+      .maybeSingle();
+
+    if (existingPlatformConnection) {
+      await supabase
+        .from('platform_connections')
+        .update(platformConnectionPayload)
+        .eq('id', existingPlatformConnection.id);
+    } else {
+      await supabase
+        .from('platform_connections')
+        .insert(platformConnectionPayload);
+    }
+
     // Check if connection already exists
     const { data: existingConnection } = await supabase
       .from("tiktok_shop_connections")

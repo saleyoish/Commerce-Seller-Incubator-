@@ -1,5 +1,6 @@
-import { createServerSideSupabase } from "@/lib/supabase-server";
-import { redirect } from "next/navigation";
+'use client';
+
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,8 +19,10 @@ import {
   ListCheck,
   DollarSign,
   HelpCircle,
+  X,
 } from "lucide-react";
 
+// Training modules data
 const trainingModules = [
   {
     id: "getting-started",
@@ -171,85 +174,27 @@ const trainingModules = [
   },
 ];
 
-async function getTrainingData() {
-  const supabase = await createServerSideSupabase();
+// Client component for training page
+export default function TrainingPage() {
+  const [activeModule, setActiveModule] = useState<typeof trainingModules[0] | null>(null);
+  const [completedModules, setCompletedModules] = useState<Set<string>>(new Set());
+  
+  const handlePlayModule = (module: typeof trainingModules[0]) => {
+    setActiveModule(module);
+  };
 
-  // Get current user
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const closeVideo = () => {
+    setActiveModule(null);
+  };
 
-  if (!user) {
-    return { error: "Not authenticated" };
-  }
-
-  // Get seller record
-  const { data: seller } = await supabase
-    .from("sellers")
-    .select("id")
-    .eq("user_id", user.id)
-    .single();
-
-  if (!seller) {
-    return { error: "Seller not found" };
-  }
-
-  // Get training progress
-  const { data: progress, error: progressError } = await supabase
-    .from("training_progress")
-    .select("*")
-    .eq("seller_id", seller.id);
-
-  if (progressError) {
-    console.error("Error fetching progress:", progressError);
-  }
-
-  const completedModules = new Set(
-    progress?.filter((p) => p.completed).map((p) => p.module_id) || []
-  );
+  const markAsComplete = (moduleId: string) => {
+    setCompletedModules(prev => new Set([...prev, moduleId]));
+    closeVideo();
+  };
 
   const totalModules = trainingModules.length;
   const completedCount = completedModules.size;
   const progressPercentage = Math.round((completedCount / totalModules) * 100);
-
-  return {
-    sellerId: seller.id,
-    completedModules,
-    progressPercentage,
-    totalModules,
-    completedCount,
-  };
-}
-
-export default async function TrainingPage() {
-  const {
-    sellerId,
-    completedModules,
-    progressPercentage,
-    totalModules,
-    completedCount,
-    error,
-  } = await getTrainingData();
-
-  if (error === "Not authenticated") {
-    redirect("/login");
-  }
-
-  if (error === "Seller not found") {
-    redirect("/signup");
-  }
-
-  if (error) {
-    return (
-      <div className="p-8">
-        <Card>
-          <CardContent className="p-6">
-            <p className="text-red-600">{error}</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -305,10 +250,10 @@ export default async function TrainingPage() {
                     const Icon = module.icon;
 
                     return (
-                      <a
+                      <button
                         key={module.id}
-                        href={`#${module.id}`}
-                        className={`flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors ${
+                        onClick={() => handlePlayModule(module)}
+                        className={`w-full flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors text-left ${
                           isCompleted ? "bg-green-50/50" : ""
                         }`}
                       >
@@ -341,8 +286,8 @@ export default async function TrainingPage() {
                             {module.duration}
                           </p>
                         </div>
-                        <ChevronRight className="w-4 h-4 text-gray-400" />
-                      </a>
+                        <Play className="w-4 h-4 text-gray-400" />
+                      </button>
                     );
                   })}
                 </div>
@@ -384,13 +329,16 @@ export default async function TrainingPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="p-6 space-y-6">
-                    {/* Video Placeholder */}
-                    <div className="aspect-video bg-gray-900 rounded-lg flex items-center justify-center">
+                    {/* Video Player */}
+                    <div 
+                      className="aspect-video bg-gray-900 rounded-lg flex items-center justify-center cursor-pointer hover:bg-gray-800 transition-colors group"
+                      onClick={() => handlePlayModule(module)}
+                    >
                       <div className="text-center">
-                        <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
                           <Play className="w-8 h-8 text-white" />
                         </div>
-                        <p className="text-gray-400">Video tutorial</p>
+                        <p className="text-gray-400">Click to play video tutorial</p>
                         <p className="text-sm text-gray-500">{module.duration}</p>
                       </div>
                     </div>
@@ -440,32 +388,24 @@ export default async function TrainingPage() {
                     <Separator />
 
                     {/* Complete Button */}
-                    <form action="/api/training/complete-module" method="POST">
-                      <input type="hidden" name="moduleId" value={module.id} />
-                      <input
-                        type="hidden"
-                        name="sellerId"
-                        value={sellerId}
-                      />
-                      <Button
-                        type="submit"
-                        className="w-full"
-                        disabled={isCompleted}
-                        variant={isCompleted ? "outline" : "default"}
-                      >
-                        {isCompleted ? (
-                          <>
-                            <CheckCircle className="w-4 h-4 mr-2" />
-                            Completed
-                          </>
-                        ) : (
-                          <>
-                            Mark as Complete
-                            <ChevronRight className="w-4 h-4 ml-2" />
-                          </>
-                        )}
-                      </Button>
-                    </form>
+                    <Button
+                      onClick={() => markAsComplete(module.id)}
+                      className="w-full"
+                      disabled={isCompleted}
+                      variant={isCompleted ? "outline" : "default"}
+                    >
+                      {isCompleted ? (
+                        <>
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Completed
+                        </>
+                      ) : (
+                        <>
+                          Mark as Complete
+                          <ChevronRight className="w-4 h-4 ml-2" />
+                        </>
+                      )}
+                    </Button>
                   </CardContent>
                 </Card>
               );
@@ -473,6 +413,58 @@ export default async function TrainingPage() {
           </div>
         </div>
       </main>
+
+      {/* Video Player Modal */}
+      {activeModule && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <div className="relative w-full max-w-4xl bg-black rounded-lg overflow-hidden">
+            {/* Close button */}
+            <button
+              onClick={closeVideo}
+              className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/20 hover:bg-white/40 flex items-center justify-center transition-colors"
+            >
+              <X className="w-5 h-5 text-white" />
+            </button>
+
+            {/* Video info */}
+            <div className="p-4 bg-white border-b">
+              <h3 className="font-semibold text-gray-900">{activeModule.title}</h3>
+              <p className="text-sm text-gray-600">{activeModule.description}</p>
+            </div>
+
+            {/* Video iframe */}
+            <div className="aspect-video">
+              <iframe
+                src={activeModule.videoUrl}
+                title={activeModule.title}
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+
+            {/* Action buttons */}
+            <div className="p-4 bg-white flex items-center justify-between">
+              <div className="text-sm text-gray-600">
+                Duration: {activeModule.duration}
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={closeVideo}>
+                  Close
+                </Button>
+                {!completedModules.has(activeModule.id) && (
+                  <Button 
+                    className="bg-red-600 hover:bg-red-700 text-white"
+                    onClick={() => markAsComplete(activeModule.id)}
+                  >
+                    Mark as Complete
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

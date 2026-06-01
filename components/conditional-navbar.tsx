@@ -5,7 +5,7 @@ import Navbar from './navbar';
 
 export function ConditionalNavbar({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isDashboard = pathname?.startsWith('/dashboard') || pathname?.startsWith('/admin');
+  const isDashboard = pathname?.startsWith('/seller') || pathname?.startsWith('/admin');
   
   return (
     <>

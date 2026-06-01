@@ -120,6 +120,30 @@ export const sendPayoutNotification = async (to: string, sellerName: string, amo
   }
 };
 
+export const sendAdminNewSellerNotification = async (adminEmail: string, sellerEmail: string, sellerPhone: string) => {
+  try {
+    const resend = getResend();
+    if (!resend) throw new Error('Resend not initialized');
+    await resend.emails.send({
+      from: fromEmail,
+      to: adminEmail,
+      subject: 'New Seller Registration - Approval Required',
+      html: `
+        <h1>New Seller Signed Up</h1>
+        <p>A new seller has registered and is pending your approval.</p>
+        <ul>
+          <li><strong>Email:</strong> ${sellerEmail}</li>
+          <li><strong>Phone:</strong> ${sellerPhone}</li>
+        </ul>
+        <p><a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/admin/sellers" style="background-color: #7C3AED; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Review & Approve</a></p>
+        <p>Best regards,<br>Live Commerce Team</p>
+      `,
+    });
+  } catch (error) {
+    console.error('Failed to send admin notification:', error);
+  }
+};
+
 export const sendPasswordResetEmail = async (to: string, resetUrl: string) => {
   try {
     const resend = getResend();

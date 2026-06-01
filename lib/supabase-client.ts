@@ -39,6 +39,12 @@ export const createClientSideSupabase = () => {
         document.cookie = `${name}=; Max-Age=0; Path=${options?.path || '/'}; SameSite=${options?.sameSite || 'Lax'}`;
       },
     },
+    global: {
+      headers: {
+        'x-my-custom-header': 'commerce-seller-incubator',
+        'Prefer': 'return=representation'
+      }
+    }
   });
 
   // Handle auth errors (e.g., invalid refresh token)
@@ -77,6 +83,8 @@ export type Seller = {
   approval_status: string;
   stream_embed_url: string | null;
   schedule_text: string | null;
+  restream_username: string | null;
+  restream_stream_key: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -284,6 +292,22 @@ export type SocialMediaAccount = {
   status: 'active' | 'expired' | 'disconnected';
   connected_at: string | null;
   last_post_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SocialPost = {
+  id: string;
+  clip_id: string;
+  seller_id: string;
+  platform: string;
+  post_id: string | null;
+  caption: string | null;
+  hashtags: string[] | null;
+  status: string;
+  scheduled_at: string | null;
+  posted_at: string | null;
+  error: string | null;
   created_at: string;
   updated_at: string;
 };

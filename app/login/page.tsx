@@ -70,10 +70,38 @@ export default function LoginPage() {
         role: admin ? 'admin' : 'seller',
       });
 
-      router.push(admin ? '/admin' : '/dashboard');
-    } catch (err: any) {
-      setError(err.message || 'Invalid email or password');
+      router.push(admin ? '/admin' : '/seller');
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      setError(error.message || 'Invalid email or password');
     } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const supabase = createClientSideSupabase();
+      const redirectUrl = `${window.location.origin}/seller`;
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('Unable to start Google sign-in');
+      }
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      setError(error.message || 'Google sign-in failed');
       setIsLoading(false);
     }
   };
@@ -180,6 +208,21 @@ export default function LoginPage() {
                 {isLoading ? 'Logging in…' : 'Log In'}
               </button>
             </form>
+
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={handleGoogleSignIn}
+                className="w-full btn-secondary py-2.5 flex items-center justify-center gap-2 border border-[var(--border-default)] hover:bg-[var(--bg-surface)] disabled:opacity-60"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Continuing with Google...</>
+                ) : (
+                  'Continue with Google'
+                )}
+              </button>
+            </div>
 
             {/* Footer links */}
             <div className="mt-6 space-y-3 text-center text-sm">

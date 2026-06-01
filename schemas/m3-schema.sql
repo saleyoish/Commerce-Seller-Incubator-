@@ -408,6 +408,13 @@ CREATE POLICY "admin_only_upcoming_streams" ON upcoming_streams
   );
 
 -- ============================================
+-- MIGRATION: Add Restream credentials to sellers table
+-- ============================================
+-- Add columns for storing Restream.io credentials
+ALTER TABLE sellers ADD COLUMN IF NOT EXISTS restream_username TEXT;
+ALTER TABLE sellers ADD COLUMN IF NOT EXISTS restream_stream_key TEXT;
+
+-- ============================================
 -- STORAGE BUCKET SETUP (run in Supabase Dashboard)
 -- ============================================
 -- Note: Storage buckets must be created via Supabase Dashboard or Management API

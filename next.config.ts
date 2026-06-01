@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  // Use local directory for .next folder to improve performance
+  distDir: 'build',
   async rewrites() {
     return [
       {

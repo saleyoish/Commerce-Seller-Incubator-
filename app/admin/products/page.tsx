@@ -13,17 +13,52 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Loader2, Trash2, ImageIcon } from 'lucide-react';
+import { Loader2, Trash2, ImageIcon, Edit, Save, X } from 'lucide-react';
+import { getCategoryNames } from '@/lib/categories';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { PLATFORM_CONFIG } from '@/lib/config';
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    description: '',
+    price: 0,
+    stock_quantity: 0,
+    category: '',
+    status: 'active' as 'active' | 'inactive' | 'deleted',
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [categories, setCategories] = useState<string[]>([]);
 
   useEffect(() => {
     loadProducts();
+    // Load custom categories
+    const customCategories = getCategoryNames();
+    const merged = [...new Set([...PLATFORM_CONFIG.PRODUCT_CATEGORIES, ...customCategories])];
+    setCategories(merged);
   }, []);
 
   const loadProducts = async () => {
@@ -48,6 +83,7 @@ export default function AdminProductsPage() {
 
     setDeleteLoading(productId);
     setError(null);
+    setSuccess(null);
 
     try {
       const supabase = createClientSideSupabase();
@@ -55,12 +91,63 @@ export default function AdminProductsPage() {
 
       if (error) throw error;
 
+      setSuccess('Product deleted successfully');
       // Refresh the list
       loadProducts();
     } catch (err: any) {
       setError(err.message);
     } finally {
       setDeleteLoading(null);
+    }
+  };
+
+  const startEditing = (product: Product) => {
+    setEditingProduct(product);
+    setEditFormData({
+      name: product.name,
+      description: product.description || '',
+      price: product.price,
+      stock_quantity: product.stock_quantity,
+      category: product.category || '',
+      status: product.status as 'active' | 'inactive' | 'deleted',
+    });
+    setIsEditDialogOpen(true);
+    setError(null);
+    setSuccess(null);
+  };
+
+  const handleUpdateProduct = async () => {
+    if (!editingProduct) return;
+
+    setIsSaving(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const supabase = createClientSideSupabase();
+      const { error } = await supabase
+        .from('products')
+        .update({
+          name: editFormData.name,
+          description: editFormData.description || null,
+          price: editFormData.price,
+          stock_quantity: editFormData.stock_quantity,
+          category: editFormData.category || null,
+          status: editFormData.status,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', editingProduct.id);
+
+      if (error) throw error;
+
+      setSuccess('Product updated successfully');
+      setIsEditDialogOpen(false);
+      setEditingProduct(null);
+      loadProducts();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -141,26 +228,174 @@ export default function AdminProductsPage() {
                     <TableCell>{product.category}</TableCell>
                     <TableCell>{getStatusBadge(product.status)}</TableCell>
                     <TableCell>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleDelete(product.id)}
-                        disabled={deleteLoading === product.id}
-                      >
-                        {deleteLoading === product.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => startEditing(product)}
+                          disabled={deleteLoading === product.id || isSaving}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDelete(product.id)}
+                          disabled={deleteLoading === product.id}
+                        >
+                          {deleteLoading === product.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
               )}
             </TableBody>
           </Table>
+
+          {/* Success Message */}
+          {success && (
+            <Alert className="mt-4 bg-green-50 border-green-200">
+              <AlertDescription className="text-green-800">{success}</AlertDescription>
+            </Alert>
+          )}
         </CardContent>
       </Card>
+
+      {/* Edit Product Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit className="w-5 h-5" />
+              Edit Product
+            </DialogTitle>
+            <DialogDescription>
+              Update the product details below.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            {success && (
+              <Alert className="bg-green-50 border-green-200">
+                <AlertDescription className="text-green-800">{success}</AlertDescription>
+              </Alert>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="edit_name">Product Name</Label>
+              <Input
+                id="edit_name"
+                value={editFormData.name}
+                onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                placeholder="Product name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit_description">Description</Label>
+              <Input
+                id="edit_description"
+                value={editFormData.description}
+                onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                placeholder="Product description"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit_price">Price ($)</Label>
+                <Input
+                  id="edit_price"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={editFormData.price}
+                  onChange={(e) => setEditFormData({ ...editFormData, price: parseFloat(e.target.value) || 0 })}
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit_stock">Stock Quantity</Label>
+                <Input
+                  id="edit_stock"
+                  type="number"
+                  min="0"
+                  value={editFormData.stock_quantity}
+                  onChange={(e) => setEditFormData({ ...editFormData, stock_quantity: parseInt(e.target.value) || 0 })}
+                  placeholder="0"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit_category">Category</Label>
+              <Select
+                value={editFormData.category}
+                onValueChange={(value) => setEditFormData({ ...editFormData, category: value || '' })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit_status">Status</Label>
+              <Select
+                value={editFormData.status}
+                onValueChange={(value) => {
+                  if (value) setEditFormData({ ...editFormData, status: value as 'active' | 'inactive' | 'deleted' });
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="deleted">Deleted</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Button
+                onClick={handleUpdateProduct}
+                disabled={isSaving}
+                className="flex-1"
+              >
+                {isSaving ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Save className="w-4 h-4 mr-2" />
+                )}
+                Save Changes
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsEditDialogOpen(false);
+                  setEditingProduct(null);
+                  setError(null);
+                }}
+              >
+                <X className="w-4 h-4 mr-2" />
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -30,6 +30,11 @@ export const createServerSideSupabase = async () => {
         cookieStore.set({ name, value: '', ...options });
       },
     },
+    global: {
+      headers: {
+        'Prefer': 'return=representation'
+      }
+    }
   });
 };
 
@@ -49,5 +54,10 @@ export const createServerSideSupabaseForMiddleware = (request: Request, response
         // Cookies will be removed by middleware
       },
     },
+    global: {
+      headers: {
+        'Prefer': 'return=representation'
+      }
+    }
   });
 };

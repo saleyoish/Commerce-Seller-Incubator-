@@ -13,24 +13,17 @@ export default function HeroButtons() {
     }
   };
 
-  const scrollToWaitlist = (e: React.MouseEvent) => {
-    e.preventDefault();
-    const element = document.getElementById('waitlist');
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
   return (
     <div className="flex flex-col sm:flex-row gap-4">
-      <Button 
-        size="lg" 
-        onClick={scrollToWaitlist}
-        className="bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white text-lg px-8"
-      >
-        Join Waitlist
-        <ArrowRight className="ml-2 w-5 h-5" />
-      </Button>
+      <Link href="/signup">
+        <Button 
+          size="lg" 
+          className="bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white text-lg px-8"
+        >
+          Join Waitlist
+          <ArrowRight className="ml-2 w-5 h-5" />
+        </Button>
+      </Link>
       
       <Button 
         size="lg" 

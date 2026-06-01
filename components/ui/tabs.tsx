@@ -28,16 +28,20 @@ Tabs.displayName = "Tabs"
 const TabsList = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & { activeTab?: string; setActiveTab?: (value: string) => void }
->(({ className, activeTab, setActiveTab, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
-      className
-    )}
-    {...props}
-  />
-))
+>(({ className, activeTab, setActiveTab, ...props }, ref) => {
+  // Remove internal props before passing to DOM
+  const { activeTab: _at, setActiveTab: _sat, ...domProps } = props as any;
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
+        className
+      )}
+      {...domProps}
+    />
+  )
+})
 TabsList.displayName = "TabsList"
 
 const TabsTrigger = React.forwardRef<
@@ -63,8 +67,8 @@ TabsTrigger.displayName = "TabsTrigger"
 
 const TabsContent = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & { value?: string; activeTab?: string }
->(({ className, value, activeTab, children, ...props }, ref) => {
+  React.HTMLAttributes<HTMLDivElement> & { value?: string; activeTab?: string; setActiveTab?: (value: string) => void }
+>(({ className, value, activeTab, setActiveTab, children, ...props }, ref) => {
   if (value !== activeTab) return null
   return (
     <div

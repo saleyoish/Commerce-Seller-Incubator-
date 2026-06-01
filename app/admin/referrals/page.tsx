@@ -1,3 +1,4 @@
+import { createAdminSupabase } from "@/lib/supabase-admin";
 import { createServerSideSupabase } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,18 +15,20 @@ import {
 import { DollarSign, Users, Trophy, CheckCircle } from "lucide-react";
 
 async function getReferralsData() {
-  const supabase = await createServerSideSupabase();
+  // Use admin client for referrals table to bypass RLS
+  const adminSupabase = createAdminSupabase();
+  const serverSupabase = await createServerSideSupabase();
 
   // Check if user is admin
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await serverSupabase.auth.getUser();
 
   if (!user) {
     return { error: "Not authenticated" };
   }
 
-  const { data: admin } = await supabase
+  const { data: admin } = await serverSupabase
     .from("admins")
     .select("id")
     .eq("user_id", user.id)
@@ -35,8 +38,9 @@ async function getReferralsData() {
     return { error: "Not authorized" };
   }
 
-  // Fetch all referrals with seller info
-  const { data: referrals, error } = await supabase
+  // Fetch all referrals with seller info using admin client
+  console.log("[Admin] Fetching all referrals...");
+  const { data: referrals, error } = await adminSupabase
     .from("referrals")
     .select(`
       *,
@@ -45,12 +49,15 @@ async function getReferralsData() {
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error("Error fetching referrals:", error);
-    return { error: "Failed to fetch referrals" };
+    console.error("[Admin] Error fetching referrals:", error);
+    return { error: "Failed to fetch referrals: " + error.message };
   }
+  
+  console.log("[Admin] Referrals fetched:", referrals?.length || 0, "records");
+  console.log("[Admin] First few referrals:", referrals?.slice(0, 3));
 
-  // Get top referrers
-  const { data: topReferrers } = await supabase.rpc("get_top_referrers", {
+  // Get top referrers using admin client
+  const { data: topReferrers } = await adminSupabase.rpc("get_top_referrers", {
     limit_count: 10,
   });
 
@@ -62,17 +69,18 @@ async function getReferralsData() {
     active: referrals?.filter((r) => r.status === "active").length || 0,
     paid: referrals?.filter((r) => r.paid).length || 0,
     pendingPayout:
-      referrals?.filter((r) => !r.paid && r.status === "active").length || 0,
+      referrals?.filter((r) => !r.paid && (r.status === "active" || r.status === "approved")).length || 0,
     totalPaid:
       referrals
         ?.filter((r) => r.paid)
         .reduce((sum, r) => sum + (r.bonus_amount || 0), 0) || 0,
     totalPending:
       referrals
-        ?.filter((r) => !r.paid && r.status === "active")
+        ?.filter((r) => !r.paid && (r.status === "active" || r.status === "approved"))
         .reduce((sum, r) => sum + (r.bonus_amount || 0), 0) || 0,
   };
 
+  console.log("[Admin] Returning stats:", stats);
   return { referrals: referrals || [], stats, topReferrers: topReferrers || [] };
 }
 
@@ -213,7 +221,7 @@ export default async function ReferralsAdminPage() {
                       {referrer.referrer_email}
                     </TableCell>
                     <TableCell>
-                      <code className="bg-gray-100 px-2 py-1 rounded text-sm">
+                      <code className="bg-gray-100 px-2 py-1 rounded text-sm text-purple-900 font-semibold">
                         {referrer.referral_code}
                       </code>
                     </TableCell>

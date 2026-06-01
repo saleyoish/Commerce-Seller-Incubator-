@@ -1,3 +1,5 @@
+'use client';
+
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,11 +23,41 @@ import {
   ArrowRight,
   Star,
 } from "lucide-react";
-import { SubmitButton } from "@/components/ui/submit-button";
-import { submitWaitlistAction } from "./actions";
 import HeroButtons from "@/components/hero-buttons";
+import DashboardNav from "@/components/DashboardNav";
+import { GlobalGoLiveButton } from "@/components/streaming/GlobalGoLiveButton";
+import { useState, useEffect } from 'react';
+import { createClientSideSupabase } from '@/lib/supabase-client';
 
 export default function Home() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentSellerId, setCurrentSellerId] = useState<string>('');
+
+  useEffect(() => {
+    const supabase = createClientSideSupabase();
+    
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsLoggedIn(!!session);
+      
+      if (session) {
+        const { data: seller } = await supabase
+          .from('sellers')
+          .select('id')
+          .eq('user_id', session.user.id)
+          .single();
+        setCurrentSellerId(seller?.id || '');
+      }
+    };
+    checkAuth();
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsLoggedIn(!!session);
+    });
+    
+    return () => subscription.unsubscribe();
+  }, []);
+
   return (
     <div className="min-h-screen bg-[var(--bg-base)]">
 
@@ -57,7 +89,8 @@ export default function Home() {
               </p>
 
               <HeroButtons />
-
+              
+              
               {/* Trust badges */}
               <div className="mt-8 flex flex-wrap items-center gap-6 text-sm text-[var(--text-muted)]">
                 {[
@@ -228,100 +261,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─── WAITLIST FORM ────────────────────────────── */}
-      <section id="waitlist" className="py-24">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <p className="text-xs uppercase tracking-widest text-[var(--text-muted)] mb-3">Apply Now</p>
-            <h2 className="text-3xl md:text-4xl font-semibold text-[var(--text-primary)] mb-4">
-              Join the Waitlist
-            </h2>
-            <p className="text-lg text-[var(--text-secondary)]">
-              Limited spots available. Apply now to secure your place.
-            </p>
-          </div>
-
-          <div className="card-premium !p-8">
-            <form action={submitWaitlistAction} className="space-y-6">
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="name" className="text-sm font-medium text-[var(--text-secondary)]">Full Name *</Label>
-                  <input
-                    id="name"
-                    name="name"
-                    placeholder="John Doe"
-                    required
-                    className="input-premium"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-sm font-medium text-[var(--text-secondary)]">Email *</Label>
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="john@example.com"
-                    required
-                    className="input-premium"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="phone" className="text-sm font-medium text-[var(--text-secondary)]">Phone Number *</Label>
-                <input
-                  id="phone"
-                  name="phone"
-                  type="tel"
-                  placeholder="+1 (555) 123-4567"
-                  required
-                  className="input-premium"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="whatYouSell" className="text-sm font-medium text-[var(--text-secondary)]">What do you sell? *</Label>
-                <Textarea
-                  id="whatYouSell"
-                  name="whatYouSell"
-                  placeholder="Describe your products, categories, and typical price range..."
-                  required
-                  rows={4}
-                  className="input-premium resize-none"
-                />
-              </div>
-
-              <div className="space-y-3">
-                <Label className="text-sm font-medium text-[var(--text-secondary)]">Have you done live selling before? *</Label>
-                <RadioGroup defaultValue="no" className="flex gap-6">
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem name="hasLiveExperience" value="yes" id="yes-experience" />
-                    <Label htmlFor="yes-experience" className="cursor-pointer text-[var(--text-secondary)]">Yes</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem name="hasLiveExperience" value="no" id="no-experience" />
-                    <Label htmlFor="no-experience" className="cursor-pointer text-[var(--text-secondary)]">No</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
-              <div className="flex items-start space-x-3">
-                <Checkbox id="consent" name="consent" required />
-                <Label htmlFor="consent" className="text-sm leading-tight cursor-pointer text-[var(--text-muted)]">
-                  I agree to receive emails about my application and the TikTok Shop Fast Track program.
-                  You can unsubscribe at any time.
-                </Label>
-              </div>
-
-              <SubmitButton className="w-full btn-primary text-base py-3">
-                Submit Application
-                <ArrowRight className="w-4 h-4 ml-2 inline" />
-              </SubmitButton>
-            </form>
-          </div>
-        </div>
-      </section>
-
       {/* ─── FAQ ──────────────────────────────────────── */}
       <section className="py-24 bg-[var(--bg-surface)]">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -383,9 +322,9 @@ export default function Home() {
               <p className="text-lg text-[var(--text-secondary)] mb-8 max-w-xl mx-auto">
                 Join our community of sellers already growing with TikTok Shop
               </p>
-              <Link href="#waitlist">
+              <Link href="/signup">
                 <button className="btn-primary text-base px-8 py-3 inline-flex items-center gap-2">
-                  Join Waitlist Now
+                  Join Waitlist
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </Link>
@@ -416,21 +355,12 @@ export default function Home() {
               <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-4 uppercase tracking-widest">Platform</h4>
               <ul className="space-y-2 text-sm text-[var(--text-muted)]">
                 <li><Link href="#how-it-works" className="hover:text-[var(--text-primary)] transition-colors">How It Works</Link></li>
-                <li><Link href="/training" className="hover:text-[var(--text-primary)] transition-colors">Training</Link></li>
+                <li><Link href="/seller/training" className="hover:text-[var(--text-primary)] transition-colors">Training</Link></li>
                 <li><Link href="/dashboard/tiktok-shop" className="hover:text-[var(--text-primary)] transition-colors">TikTok Shop</Link></li>
                 <li><Link href="/dashboard/referrals" className="hover:text-[var(--text-primary)] transition-colors">My Referrals</Link></li>
               </ul>
             </div>
-            <div>
-              <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-4 uppercase tracking-widest">Dashboard</h4>
-              <ul className="space-y-2 text-sm text-[var(--text-muted)]">
-                <li><Link href="/dashboard" className="hover:text-[var(--text-primary)] transition-colors">My Dashboard</Link></li>
-                <li><Link href="/dashboard/earnings" className="hover:text-[var(--text-primary)] transition-colors">Earnings</Link></li>
-                <li><Link href="/dashboard/products" className="hover:text-[var(--text-primary)] transition-colors">Products</Link></li>
-                <li><Link href="/dashboard/sales" className="hover:text-[var(--text-primary)] transition-colors">Sales</Link></li>
-                <li><Link href="/dashboard/schedule" className="hover:text-[var(--text-primary)] transition-colors">Schedule</Link></li>
-              </ul>
-            </div>
+            <DashboardNav />
             <div>
               <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-4 uppercase tracking-widest">Legal</h4>
               <ul className="space-y-2 text-sm text-[var(--text-muted)]">

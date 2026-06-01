@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { CheckCircle, XCircle, Loader2, Users } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, Users, Edit, Trash2, AlertTriangle } from 'lucide-react';
 
 const FILTER_TABS = ['all', 'pending', 'approved', 'rejected'] as const;
 type FilterTab = typeof FILTER_TABS[number];
@@ -21,6 +21,8 @@ export default function AdminSellersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [editingSeller, setEditingSeller] = useState<Seller | null>(null);
+  const [searchTerm, setSearchTerm] = useState<string>('');
 
   useEffect(() => {
     loadSellers();
@@ -63,9 +65,81 @@ export default function AdminSellersPage() {
     }
   };
 
-  const filteredSellers = sellers.filter((s) =>
-    filter === 'all' ? true : s.approval_status === filter
-  );
+  const handleEditSeller = (seller: Seller) => {
+    setEditingSeller(seller);
+  };
+
+  const handleSaveSeller = async (updatedSeller: Partial<Seller>) => {
+    if (!editingSeller) return;
+    
+    setActionLoading(editingSeller.id);
+    setError(null);
+    try {
+      const response = await fetch('/api/admin/update-seller', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sellerId: editingSeller.id, ...updatedSeller }),
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to update seller');
+      }
+      loadSellers();
+      setEditingSeller(null);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDeleteSeller = async (sellerId: string, sellerEmail: string) => {
+    // Confirm deletion
+    const confirmed = confirm(
+      `⚠️ WARNING: This will permanently delete seller ${sellerEmail} and ALL associated data including:\n\n` +
+      `• Stream sessions\n` +
+      `• Products\n` +
+      `• Platform connections\n` +
+      `• Sales records\n` +
+      `• Referrals\n` +
+      `• User account\n\n` +
+      `This action cannot be undone. Are you sure?`
+    );
+
+    if (!confirmed) return;
+
+    setActionLoading(sellerId);
+    setError(null);
+    try {
+      const response = await fetch('/api/admin/delete-seller', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sellerId }),
+      });
+      
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to delete seller');
+      }
+      
+      loadSellers();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const filteredSellers = sellers.filter((s) => {
+    const matchesSearch = searchTerm === '' || 
+      s.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.phone?.includes(searchTerm) ||
+      s.approval_status?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    return filter === 'all' 
+      ? matchesSearch
+      : s.approval_status === filter && matchesSearch;
+  });
 
   const counts = {
     all: sellers.length,
@@ -115,6 +189,25 @@ export default function AdminSellersPage() {
           <div>
             <h2 className="text-lg font-semibold text-[var(--text-primary)]">Sellers Management</h2>
             <p className="text-xs text-[var(--text-muted)]">{sellers.length} total sellers</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search sellers..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="input-premium pl-10 pr-4 w-64"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-2 top-1/2 p-2 text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+              >
+                <XCircle className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -203,30 +296,52 @@ export default function AdminSellersPage() {
                       {new Date(seller.created_at).toLocaleDateString()}
                     </TableCell>
                     <TableCell className="px-5">
-                      {seller.approval_status === 'pending' && (
-                        <div className="flex items-center gap-2">
-                          <button
-                            className="w-8 h-8 rounded-lg flex items-center justify-center border border-[var(--accent-success)] text-[var(--accent-success)] hover:bg-[rgba(16,185,129,0.12)] transition-colors disabled:opacity-40"
-                            title="Approve"
-                            onClick={() => handleApproveReject(seller.id, true)}
-                            disabled={actionLoading === seller.id}
-                          >
-                            {actionLoading === seller.id
-                              ? <Loader2 className="w-4 h-4 animate-spin" />
-                              : <CheckCircle className="w-4 h-4" />}
-                          </button>
-                          <button
-                            className="w-8 h-8 rounded-lg flex items-center justify-center border border-[var(--accent-danger)] text-[var(--accent-danger)] hover:bg-[rgba(239,68,68,0.12)] transition-colors disabled:opacity-40"
-                            title="Reject"
-                            onClick={() => handleApproveReject(seller.id, false)}
-                            disabled={actionLoading === seller.id}
-                          >
-                            {actionLoading === seller.id
-                              ? <Loader2 className="w-4 h-4 animate-spin" />
-                              : <XCircle className="w-4 h-4" />}
-                          </button>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {seller.approval_status === 'pending' && (
+                          <>
+                            <button
+                              className="w-8 h-8 rounded-lg flex items-center justify-center border border-[var(--accent-success)] text-[var(--accent-success)] hover:bg-[rgba(16,185,129,0.12)] transition-colors disabled:opacity-40"
+                              title="Approve"
+                              onClick={() => handleApproveReject(seller.id, true)}
+                              disabled={actionLoading === seller.id}
+                            >
+                              {actionLoading === seller.id
+                                ? <Loader2 className="w-4 h-4 animate-spin" />
+                                : <CheckCircle className="w-4 h-4" />}
+                            </button>
+                            <button
+                              className="w-8 h-8 rounded-lg flex items-center justify-center border border-[var(--accent-danger)] text-[var(--accent-danger)] hover:bg-[rgba(239,68,68,0.12)] transition-colors disabled:opacity-40"
+                              title="Reject"
+                              onClick={() => handleApproveReject(seller.id, false)}
+                              disabled={actionLoading === seller.id}
+                            >
+                              {actionLoading === seller.id
+                                ? <Loader2 className="w-4 h-4 animate-spin" />
+                                : <XCircle className="w-4 h-4" />}
+                            </button>
+                          </>
+                        )}
+                        <button
+                          className="w-8 h-8 rounded-lg flex items-center justify-center border border-[var(--accent-primary)] text-[var(--accent-primary)] hover:bg-[rgba(124,58,237,0.12)] transition-colors disabled:opacity-40"
+                          title="Edit"
+                          onClick={() => handleEditSeller(seller)}
+                          disabled={actionLoading === seller.id}
+                        >
+                          {actionLoading === seller.id
+                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : <Edit className="w-4 h-4" />}
+                        </button>
+                        <button
+                          className="w-8 h-8 rounded-lg flex items-center justify-center border border-[var(--accent-danger)] text-[var(--accent-danger)] hover:bg-[rgba(239,68,68,0.12)] transition-colors disabled:opacity-40"
+                          title="Delete Seller"
+                          onClick={() => handleDeleteSeller(seller.id, seller.email)}
+                          disabled={actionLoading === seller.id}
+                        >
+                          {actionLoading === seller.id
+                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : <Trash2 className="w-4 h-4" />}
+                        </button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -235,6 +350,84 @@ export default function AdminSellersPage() {
           </Table>
         </div>
       </div>
+
+      {/* Edit Seller Modal */}
+      {editingSeller && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-[var(--bg-surface)] rounded-xl p-6 w-96 max-w-full mx-4">
+            <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Edit Seller</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-[var(--text-secondary)]">Email</label>
+                <input
+                  type="email"
+                  className="input-premium mt-1"
+                  value={editingSeller.email || ''}
+                  disabled
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-[var(--text-secondary)]">Phone</label>
+                <input
+                  type="tel"
+                  className="input-premium mt-1"
+                  placeholder="Enter phone number"
+                  defaultValue={editingSeller.phone || ''}
+                  id="edit-phone"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-[var(--text-secondary)]">Approval Status</label>
+                <select 
+                  className="input-premium mt-1"
+                  defaultValue={editingSeller.approval_status || 'pending'}
+                  id="edit-status"
+                >
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-[var(--text-secondary)]">Stripe Status</label>
+                <select 
+                  className="input-premium mt-1"
+                  defaultValue={editingSeller.stripe_onboarding_status || 'pending'}
+                  id="edit-stripe-status"
+                >
+                  <option value="pending">Pending</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  const phone = (document.getElementById('edit-phone') as HTMLInputElement)?.value;
+                  const status = (document.getElementById('edit-status') as HTMLSelectElement)?.value;
+                  const stripeStatus = (document.getElementById('edit-stripe-status') as HTMLSelectElement)?.value;
+                  handleSaveSeller({
+                    phone,
+                    approval_status: status,
+                    stripe_onboarding_status: stripeStatus
+                  });
+                }}
+                className="btn-primary text-sm px-4 py-2"
+                disabled={actionLoading === editingSeller.id}
+              >
+                {actionLoading === editingSeller.id ? 'Saving...' : 'Save Changes'}
+              </button>
+              <button
+                onClick={() => setEditingSeller(null)}
+                className="btn-secondary text-sm px-4 py-2"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

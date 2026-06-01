@@ -68,38 +68,41 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-1">
-            <Link href="/">
-              <Button variant="ghost" className="gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]">
-                <Home className="w-4 h-4" />
-                Home
-              </Button>
-            </Link>
-            <Link href="/#how-it-works" onClick={(e) => scrollToSection(e, 'how-it-works')}>
-              <Button variant="ghost" className="gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]">
-                <Play className="w-4 h-4" />
-                How It Works
-              </Button>
-            </Link>
-            {isLoggedIn && (
-              <Link href="/dashboard">
+          <div className="hidden md:flex items-center gap-3 ml-auto">
+            <div className="flex items-center gap-1">
+              <Link href="/">
                 <Button variant="ghost" className="gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]">
-                  <LayoutDashboard className="w-4 h-4" />
-                  Dashboard
+                  <Home className="w-4 h-4" />
+                  Home
                 </Button>
               </Link>
-            )}
-            {isAdmin && !isAdminPage && (
-              <Link href="/admin">
-                <Button variant="outline" className="gap-2 border-[var(--accent-primary)] text-[var(--accent-primary)] hover:bg-[var(--accent-primary)] hover:text-white">
-                  <LayoutDashboard className="w-4 h-4" />
-                  Admin
+              <Link href="/#how-it-works" onClick={(e) => scrollToSection(e, 'how-it-works')}>
+                <Button variant="ghost" className="gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]">
+                  <Play className="w-4 h-4" />
+                  How It Works
                 </Button>
               </Link>
-            )}
-            
-            {/* Theme Toggle */}
-            <button
+              {isLoggedIn && (
+                <Link href="/seller">
+                  <Button variant="ghost" className="gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]">
+                    <LayoutDashboard className="w-4 h-4" />
+                    Dashboard
+                  </Button>
+                </Link>
+              )}
+              {isAdmin && !isAdminPage && (
+                <Link href="/admin">
+                  <Button variant="outline" className="gap-2 border-[var(--accent-primary)] text-[var(--accent-primary)] hover:bg-[var(--accent-primary)] hover:text-white">
+                    <LayoutDashboard className="w-4 h-4" />
+                    Admin
+                  </Button>
+                </Link>
+              )}
+            </div>
+
+            <div className="ml-auto flex items-center gap-2">
+              {/* Theme Toggle */}
+              <button
               onClick={toggleTheme}
               className="p-2 rounded-lg border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] hover:border-[var(--border-bright)] transition-all ml-2"
               aria-label="Toggle theme"
@@ -137,11 +140,12 @@ export default function Navbar() {
             {!isLoggedIn && (
               <Link href="/signup" className="ml-2">
                 <button className="btn-primary text-sm">
-                  Sign up as Seller
+                  Join Waitlist
                 </button>
               </Link>
             )}
           </div>
+        </div>
 
           {/* Mobile Menu Button */}
           <div className="md:hidden flex items-center gap-2">
@@ -186,14 +190,16 @@ export default function Navbar() {
               How It Works
             </Link>
             {isLoggedIn && (
-              <Link
-                href="/dashboard"
-                className="flex items-center gap-2 py-2 px-2 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                <LayoutDashboard className="w-4 h-4" />
-                Dashboard
-              </Link>
+              <>
+                <Link
+                  href="/seller"
+                  className="flex items-center gap-2 py-2 px-2 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  Dashboard
+                </Link>
+              </>
             )}
             {isAdmin && (
               <Link
@@ -234,7 +240,7 @@ export default function Navbar() {
                   className="flex items-center gap-2 py-2 px-2 rounded-lg text-[var(--accent-primary)] font-semibold hover:bg-[var(--bg-raised)]"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  Sign up as Seller
+                  Join Waitlist
                 </Link>
               </>
             )}

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminSupabase } from '@/lib/supabase-admin';
+import { sendAdminNewSellerNotification } from '@/lib/resend';
 
 export async function POST(request: NextRequest) {
   try {
@@ -54,12 +55,15 @@ export async function POST(request: NextRequest) {
       userId = authData.user!.id;
     }
 
-    // 2. Check if seller record already exists
-    const { data: existingSeller } = await supabase
+    // 2. Check if seller record already exists - handle duplicates
+    const { data: sellers } = await supabase
       .from('sellers')
       .select('id')
       .eq('user_id', userId)
-      .maybeSingle();
+      .order('created_at', { ascending: false })
+      .limit(1);
+    
+    const existingSeller = sellers && sellers.length > 0 ? sellers[0] : null;
 
     if (!existingSeller) {
       // Create seller record using admin client (bypasses RLS)
@@ -81,6 +85,19 @@ export async function POST(request: NextRequest) {
           { status: 500 }
         );
       }
+    }
+
+    // Send notification to all admins about new seller
+    try {
+      const { data: admins } = await supabase.from('admins').select('email');
+      if (admins && admins.length > 0) {
+        for (const admin of admins) {
+          await sendAdminNewSellerNotification(admin.email, email, phone);
+        }
+      }
+    } catch (emailError) {
+      console.error('Failed to send admin notification:', emailError);
+      // Don't fail the signup if email fails
     }
 
     return NextResponse.json({

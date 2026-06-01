@@ -1,0 +1,288 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { createClientSideSupabase, type PlatformConnection, type Seller } from '@/lib/supabase-client';
+import { checkUserStatus } from '@/lib/auth';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2, CheckCircle, ArrowLeft, ExternalLink } from 'lucide-react';
+
+function FacebookIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+    </svg>
+  );
+}
+
+export default function FacebookShopPage() {
+  const router = useRouter();
+  const [seller, setSeller] = useState<Seller | null>(null);
+  const [connection, setConnection] = useState<PlatformConnection | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [formData, setFormData] = useState({ shopUrl: '', pageName: '', pageId: '' });
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      const supabase = createClientSideSupabase();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+
+      const sellerResult = await supabase
+        .from('sellers')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      const adminResult = await supabase
+        .from('admins')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      const sellerData = sellerResult.data;
+      const adminData = adminResult.data;
+
+      if (!sellerData && !adminData) {
+        router.push('/signup');
+        return;
+      }
+
+      setSeller(sellerData);
+
+      if (sellerData) {
+        const connectionResult = await supabase
+          .from('platform_connections')
+          .select('*')
+          .eq('seller_id', sellerData.id)
+          .eq('platform', 'facebook')
+          .maybeSingle();
+
+        if (connectionResult.error) {
+          console.warn('Could not load Facebook connection:', connectionResult.error.message || connectionResult.error);
+        }
+
+        if (connectionResult.data) {
+          setConnection(connectionResult.data);
+          setFormData({
+            shopUrl: connectionResult.data.metadata?.shopUrl || '',
+            pageName: connectionResult.data.metadata?.pageName || '',
+            pageId: connectionResult.data.platform_user_id || '',
+          });
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Failed to load Facebook shop connection.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const saveConnection = async () => {
+    if (!seller) return;
+    setIsSaving(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const supabase = createClientSideSupabase();
+      const payload = {
+        seller_id: seller.id,
+        platform: 'facebook',
+        platform_user_id: formData.pageId || formData.pageName || null,
+        status: 'connected',
+        metadata: {
+          shopUrl: formData.shopUrl,
+          pageName: formData.pageName,
+          pageId: formData.pageId,
+          connectedAt: new Date().toISOString(),
+        },
+        connected_at: new Date().toISOString(),
+      };
+
+      const result = connection
+        ? await supabase.from('platform_connections').update(payload).eq('id', connection.id).select().single()
+        : await supabase.from('platform_connections').insert(payload).select().single();
+
+      if (result.error) {
+        throw result.error;
+      }
+
+      if (result.data) {
+        setConnection(result.data);
+        setSuccess('Facebook Shop connected successfully.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.message || 'Unable to save Facebook connection.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const disconnect = async () => {
+    if (!connection) return;
+    if (!confirm('Disconnect Facebook Shop?')) return;
+
+    try {
+      const supabase = createClientSideSupabase();
+      const { error } = await supabase
+        .from('platform_connections')
+        .update({ status: 'disconnected' })
+        .eq('id', connection.id);
+
+      if (error) {
+        throw error;
+      }
+
+      setConnection(null);
+      setFormData({ shopUrl: '', pageName: '', pageId: '' });
+      setSuccess('Facebook Shop disconnected.');
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.message || 'Unable to disconnect.');
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto py-8 px-4 max-w-4xl">
+      <div className="mb-8">
+        <Link href="/seller/platforms" className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-4">
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Platforms
+        </Link>
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-blue-600 rounded-lg text-white">
+            <FacebookIcon className="w-8 h-8" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold">Facebook Shop</h1>
+            <p className="text-gray-600">Connect your Facebook shop so products can appear in your dashboard.</p>
+          </div>
+        </div>
+      </div>
+
+      {error && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {success && (
+        <Alert className="mb-6 border-green-500 text-green-700 bg-green-50">
+          <AlertDescription>{success}</AlertDescription>
+        </Alert>
+      )}
+
+      {connection?.status === 'connected' ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Facebook Shop Connected</CardTitle>
+            <CardDescription>Products from your Facebook shop can be synced to your dashboard.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <p className="text-sm text-gray-500">Page Name</p>
+              <p className="font-medium text-gray-900">{connection.metadata?.pageName || formData.pageName || 'Unknown'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Shop URL</p>
+              <a href={connection.metadata?.shopUrl || formData.shopUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline break-all">
+                {connection.metadata?.shopUrl || formData.shopUrl || 'No shop URL provided'}
+              </a>
+            </div>
+            <div className="flex flex-wrap gap-3 pt-4">
+              <Button onClick={() => setConnection(connection)} variant="outline">
+                Refresh
+              </Button>
+              <Button variant="destructive" onClick={disconnect}>
+                Disconnect Facebook Shop
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Connect Facebook Shop</CardTitle>
+            <CardDescription>Enter your shop details to connect and sync products to your seller dashboard.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div>
+              <Label htmlFor="shopUrl">Facebook Shop URL</Label>
+              <Input
+                id="shopUrl"
+                placeholder="https://www.facebook.com/your-shop"
+                value={formData.shopUrl}
+                onChange={(e) => setFormData({ ...formData, shopUrl: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="pageName">Facebook Page Name</Label>
+              <Input
+                id="pageName"
+                placeholder="Your Facebook Page"
+                value={formData.pageName}
+                onChange={(e) => setFormData({ ...formData, pageName: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="pageId">Facebook Page ID</Label>
+              <Input
+                id="pageId"
+                placeholder="Optional page ID"
+                value={formData.pageId}
+                onChange={(e) => setFormData({ ...formData, pageId: e.target.value })}
+              />
+            </div>
+            <div className="flex flex-wrap gap-3 pt-4">
+              <Button onClick={saveConnection} disabled={isSaving || !formData.shopUrl || !formData.pageName}>
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Connecting...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Connect Facebook Shop
+                  </>
+                )}
+              </Button>
+              <a href="https://www.facebook.com/business/shop" target="_blank" rel="noreferrer">
+                <Button variant="outline">
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Facebook Shop Guide
+                </Button>
+              </a>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}

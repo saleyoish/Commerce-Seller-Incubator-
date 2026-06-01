@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { createClientSideSupabase } from '@/lib/supabase-client';
 import {
   Users,
   Package,
@@ -14,7 +15,9 @@ import {
   BarChart2,
   Sparkles,
   ShoppingBag,
+  LogOut,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const navItems = [
   { label: 'Sellers', href: '/admin/sellers', icon: Users },
@@ -31,6 +34,13 @@ const navItems = [
 
 export default function AdminSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    const supabase = createClientSideSupabase();
+    await supabase.auth.signOut();
+    router.push('/login');
+  };
 
   return (
     <aside
@@ -69,7 +79,15 @@ export default function AdminSidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="px-4 py-4 border-t border-[var(--border-default)]">
+      <div className="px-4 py-4 border-t border-[var(--border-default)] space-y-2">
+        <Button
+          variant="ghost"
+          className="w-full justify-start gap-2 text-[var(--text-muted)] hover:text-[var(--accent-danger)] hover:bg-[rgba(239,68,68,0.1)]"
+          onClick={handleLogout}
+        >
+          <LogOut className="w-4 h-4" />
+          Logout
+        </Button>
         <p className="text-[10px] text-[var(--text-muted)] text-center">Admin Panel v1.0</p>
       </div>
     </aside>
