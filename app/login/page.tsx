@@ -83,7 +83,10 @@ export default function LoginPage() {
         role: admin ? 'admin' : 'seller',
       });
 
-      router.push(admin ? '/admin' : '/seller');
+      // Use a full page navigation so the server receives the new session
+      // cookie on the next request. router.push() does a client-side
+      // transition and the server layout won't see the fresh cookie yet.
+      window.location.href = admin ? '/admin' : '/seller';
     } catch (err: unknown) {
       const error = err instanceof Error ? err : new Error(String(err));
       setError(error.message || 'Invalid email or password');
