@@ -319,25 +319,15 @@ function DashboardContentInner() {
         )}
 
         {/* Live Stream Status */}
-        {streamStatus && (
-          <div className={`flex items-start gap-3 px-5 py-4 rounded-xl border ${
-            streamStatus.status === 'live' 
-              ? 'border-[var(--accent-success)] bg-[rgba(16,185,129,0.08)] text-[var(--accent-success)]'
-              : 'border-[var(--accent-warning)] bg-[rgba(245,158,11,0.08)] text-[var(--accent-warning)]'
-          }`}>
-            {streamStatus.status === 'live' ? (
-              <Video className="w-5 h-5 shrink-0 mt-0.5" />
-            ) : (
-              <Loader2 className="w-5 h-5 shrink-0 mt-0.5 animate-spin" />
-            )}
+        {streamStatus && streamStatus.status === 'live' && (
+          <div className={`flex items-start gap-3 px-5 py-4 rounded-xl border border-[var(--accent-success)] bg-[rgba(16,185,129,0.08)] text-[var(--accent-success)]`}>
+            <Video className="w-5 h-5 shrink-0 mt-0.5" />
             <div>
               <p className="font-semibold text-sm">
-                {streamStatus.status === 'live' ? '🔴 LIVE NOW' : '⏳ Starting Stream...'}
+                🔴 LIVE NOW
               </p>
               <p className="text-sm opacity-80">
-                {streamStatus.status === 'live' 
-                  ? `Your stream "${streamStatus.title}" is currently live!`
-                  : 'Your stream is starting. OBS should be opening...'}
+                Your stream "{streamStatus.title}" is currently live!
               </p>
             </div>
           </div>
@@ -486,15 +476,21 @@ function DashboardContentInner() {
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <span className="live-dot" />
-                    <span className="live-text">Ready</span>
+                    <span className="live-text">{streamStatus?.status === 'live' ? 'Live' : 'Ready'}</span>
                   </div>
-                  <h3 className="font-semibold text-[var(--text-primary)]">Ready to Go Live?</h3>
-                  <p className="text-sm text-[var(--text-muted)]">Start your live stream and sell to customers in real-time.</p>
+                  <h3 className="font-semibold text-[var(--text-primary)]">
+                    {streamStatus?.status === 'live' ? 'Currently Live' : 'Ready to Go Live?'}
+                  </h3>
+                  <p className="text-sm text-[var(--text-muted)]">
+                    {streamStatus?.status === 'live' 
+                      ? 'You are currently streaming live.' 
+                      : 'Start your live stream and sell to customers in real-time.'}
+                  </p>
                 </div>
               </div>
               <button onClick={handleGoLive} className="btn-primary flex items-center gap-2">
                 <Video className="w-4 h-4" />
-                Go Live
+                {streamStatus?.status === 'live' ? 'Currently Live' : 'Go Live'}
               </button>
             </div>
           </div>

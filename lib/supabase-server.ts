@@ -17,6 +17,7 @@ if (!supabasePublishableKey) {
 
 export const createServerSideSupabase = async () => {
   const cookieStore = await cookies();
+  const isProduction = process.env.NODE_ENV === 'production';
   
   return createServerClient(supabaseUrl!, supabasePublishableKey!, {
     cookies: {
@@ -24,10 +25,22 @@ export const createServerSideSupabase = async () => {
         return cookieStore.get(name)?.value;
       },
       set(name: string, value: string, options: any) {
-        cookieStore.set({ name, value, ...options });
+        cookieStore.set({ 
+          name, 
+          value, 
+          ...options,
+          secure: isProduction,
+          sameSite: options?.sameSite || 'lax'
+        });
       },
       remove(name: string, options: any) {
-        cookieStore.set({ name, value: '', ...options });
+        cookieStore.set({ 
+          name, 
+          value: '', 
+          ...options,
+          secure: isProduction,
+          sameSite: options?.sameSite || 'lax'
+        });
       },
     },
     global: {

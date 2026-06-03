@@ -15,6 +15,8 @@ if (!supabasePublishableKey) {
 }
 
 export const createClientSideSupabase = () => {
+  const isProduction = process.env.NODE_ENV === 'production';
+  
   const client = createBrowserClient(supabaseUrl!, supabasePublishableKey!, {
     cookies: {
       get(name: string) {
@@ -30,13 +32,18 @@ export const createClientSideSupabase = () => {
         if (options.maxAge) cookie += `; Max-Age=${options.maxAge}`;
         if (options.path) cookie += `; Path=${options.path}`;
         if (options.domain) cookie += `; Domain=${options.domain}`;
-        if (options.secure) cookie += `; Secure`;
+        // Always set Secure flag in production
+        if (isProduction || options.secure) cookie += `; Secure`;
         if (options.sameSite) cookie += `; SameSite=${options.sameSite}`;
+        else cookie += `; SameSite=Lax`;
         document.cookie = cookie;
       },
       remove(name: string, options: any) {
         if (typeof document === 'undefined') return;
-        document.cookie = `${name}=; Max-Age=0; Path=${options?.path || '/'}; SameSite=${options?.sameSite || 'Lax'}`;
+        let cookie = `${name}=; Max-Age=0; Path=${options?.path || '/'}`;
+        if (isProduction) cookie += `; Secure`;
+        cookie += `; SameSite=${options?.sameSite || 'Lax'}`;
+        document.cookie = cookie;
       },
     },
     global: {

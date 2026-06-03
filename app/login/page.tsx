@@ -79,32 +79,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const supabase = createClientSideSupabase();
-      const redirectUrl = `${window.location.origin}/seller`;
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: redirectUrl,
-        },
-      });
-
-      if (error) throw error;
-      if (data?.url) {
-        window.location.href = data.url;
-      } else {
-        throw new Error('Unable to start Google sign-in');
-      }
-    } catch (err: unknown) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      setError(error.message || 'Google sign-in failed');
-      setIsLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen flex animate-fade-in-up">
@@ -209,20 +183,6 @@ export default function LoginPage() {
               </button>
             </form>
 
-            <div className="mt-4">
-              <button
-                type="button"
-                onClick={handleGoogleSignIn}
-                className="w-full btn-secondary py-2.5 flex items-center justify-center gap-2 border border-[var(--border-default)] hover:bg-[var(--bg-surface)] disabled:opacity-60"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /> Continuing with Google...</>
-                ) : (
-                  'Continue with Google'
-                )}
-              </button>
-            </div>
 
             {/* Footer links */}
             <div className="mt-6 space-y-3 text-center text-sm">

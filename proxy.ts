@@ -5,6 +5,16 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
 
 export async function proxy(request: NextRequest) {
+  // Skip proxy for public routes
+  const publicPaths = ['/', '/login', '/signup', '/forgot-password', '/reset-password', '/waitlist-success'];
+  const isPublicRoute = publicPaths.includes(request.nextUrl.pathname) || 
+                        request.nextUrl.pathname.startsWith('/api/auth') ||
+                        request.nextUrl.pathname.startsWith('/api/email');
+
+  if (isPublicRoute) {
+    return NextResponse.next();
+  }
+
   // Create response to modify cookies
   const response = NextResponse.next({
     request: {
@@ -35,14 +45,16 @@ export async function proxy(request: NextRequest) {
   const { data: { user }, error: userError } = await supabase.auth.getUser();
 
   // Protected routes
-  const sellerRoutes = ['/dashboard', '/dashboard/products'];
+  const sellerRoutes = ['/seller', '/dashboard', '/dashboard/products'];
   const adminRoutes = ['/admin', '/admin/sellers', '/admin/products', '/admin/sales', '/admin/payouts'];
   const isSellerRoute = sellerRoutes.some(route => request.nextUrl.pathname.startsWith(route));
   const isAdminRoute = adminRoutes.some(route => request.nextUrl.pathname.startsWith(route));
 
-  // Redirect to signup if not authenticated on protected routes
+  // Redirect to login if not authenticated on protected routes
   if ((isSellerRoute || isAdminRoute) && (!user || userError)) {
-    return NextResponse.redirect(new URL('/signup', request.url));
+    const redirectUrl = new URL('/login', request.url);
+    redirectUrl.searchParams.set('redirect', request.nextUrl.pathname);
+    return NextResponse.redirect(redirectUrl);
   }
 
   // Check admin access for admin routes
