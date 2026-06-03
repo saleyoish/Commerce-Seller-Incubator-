@@ -66,6 +66,4 @@ proxy.ts
 /database/tiktok-schema.sql
 /database/migration_add_stream_fields.sql
 
-
-.next
 .claude
