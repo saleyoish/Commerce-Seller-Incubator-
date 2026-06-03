@@ -25,22 +25,32 @@ export const createServerSideSupabase = async () => {
         return cookieStore.get(name)?.value;
       },
       set(name: string, value: string, options: any) {
-        cookieStore.set({ 
-          name, 
-          value, 
-          ...options,
-          secure: isProduction,
-          sameSite: options?.sameSite || 'lax'
-        });
+        try {
+          cookieStore.set({ 
+            name, 
+            value, 
+            ...options,
+            secure: isProduction,
+            sameSite: options?.sameSite || 'lax'
+          });
+        } catch {
+          // set() throws when called from a Server Component during rendering.
+          // This is expected — the session is still readable via get().
+        }
       },
       remove(name: string, options: any) {
-        cookieStore.set({ 
-          name, 
-          value: '', 
-          ...options,
-          secure: isProduction,
-          sameSite: options?.sameSite || 'lax'
-        });
+        try {
+          cookieStore.set({ 
+            name, 
+            value: '', 
+            ...options,
+            maxAge: 0,
+            secure: isProduction,
+            sameSite: options?.sameSite || 'lax'
+          });
+        } catch {
+          // Same as above — expected in Server Component render context.
+        }
       },
     },
     global: {
