@@ -5,59 +5,72 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
 
 export async function proxy(request: NextRequest) {
-  // Skip proxy for public routes
-  const publicPaths = ['/', '/login', '/signup', '/forgot-password', '/reset-password', '/waitlist-success'];
-  const isPublicRoute = publicPaths.includes(request.nextUrl.pathname) || 
-                        request.nextUrl.pathname.startsWith('/api/auth') ||
-                        request.nextUrl.pathname.startsWith('/api/email');
-
-  if (isPublicRoute) {
-    return NextResponse.next();
-  }
-
-  // Create response to modify cookies
-  const response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
+  // Build the response object first — cookies must be written onto this
+  // response for the session refresh to persist across requests.
+  let supabaseResponse = NextResponse.next({
+    request,
   });
 
+  // Create the Supabase client using the response we control so that
+  // setAll() can write the refreshed token cookies back to the browser.
   const supabase = createServerClient(supabaseUrl, supabasePublishableKey, {
-    cookieOptions: {
-      path: '/',
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-    },
     cookies: {
       getAll() {
         return request.cookies.getAll();
       },
       setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          request.cookies.set(name, value);
-          response.cookies.set(name, value, options);
-        });
+        // First write onto the request (for downstream server components)
+        cookiesToSet.forEach(({ name, value }) =>
+          request.cookies.set(name, value)
+        );
+        // Rebuild supabaseResponse so the new cookies are included
+        supabaseResponse = NextResponse.next({ request });
+        cookiesToSet.forEach(({ name, value, options }) =>
+          supabaseResponse.cookies.set(name, value, options)
+        );
       },
     },
   });
 
-  // Get authenticated user (secure, validates with Supabase Auth server)
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  // IMPORTANT: always call getUser() before any early returns.
+  // This is what triggers the silent token refresh and writes the new
+  // cookie. Returning early before this call means stale tokens never
+  // get refreshed and getUser() will return null in Server Components.
+  const { data: { user } } = await supabase.auth.getUser();
 
-  // Protected routes
-  const sellerRoutes = ['/seller', '/dashboard', '/dashboard/products'];
-  const adminRoutes = ['/admin', '/admin/sellers', '/admin/products', '/admin/sales', '/admin/payouts'];
-  const isSellerRoute = sellerRoutes.some(route => request.nextUrl.pathname.startsWith(route));
-  const isAdminRoute = adminRoutes.some(route => request.nextUrl.pathname.startsWith(route));
+  const pathname = request.nextUrl.pathname;
 
-  // Redirect to login if not authenticated on protected routes
-  if ((isSellerRoute || isAdminRoute) && (!user || userError)) {
+  // Public paths — no auth required, but token refresh above already ran
+  const publicPaths = ['/', '/login', '/signup', '/forgot-password', '/reset-password', '/waitlist-success'];
+  const isPublicRoute =
+    publicPaths.includes(pathname) ||
+    pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/api/email') ||
+    pathname.startsWith('/api/waitlist') ||
+    pathname.startsWith('/api/waitlist-signup') ||
+    pathname.startsWith('/live/') ||
+    pathname.startsWith('/ref/') ||
+    pathname.startsWith('/apply') ||
+    pathname.startsWith('/leaderboard') ||
+    pathname.startsWith('/training');
+
+  if (isPublicRoute) {
+    // Return supabaseResponse (not NextResponse.next()) so refreshed
+    // cookies set above are included in the response.
+    return supabaseResponse;
+  }
+
+  const isSellerRoute = pathname.startsWith('/seller') || pathname.startsWith('/dashboard');
+  const isAdminRoute = pathname.startsWith('/admin');
+
+  // Redirect unauthenticated users to login
+  if ((isSellerRoute || isAdminRoute) && !user) {
     const redirectUrl = new URL('/login', request.url);
-    redirectUrl.searchParams.set('redirect', request.nextUrl.pathname);
+    redirectUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(redirectUrl);
   }
 
-  // Check admin access for admin routes
+  // For admin routes, verify the user has an admin row
   if (isAdminRoute && user) {
     const { data: admin } = await supabase
       .from('admins')
@@ -66,34 +79,15 @@ export async function proxy(request: NextRequest) {
       .single();
 
     if (!admin) {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
+      return NextResponse.redirect(new URL('/seller', request.url));
     }
   }
 
-  // Check seller approval for dashboard access
-  if (isSellerRoute && user && !isAdminRoute) {
-    const { data: seller } = await supabase
-      .from('sellers')
-      .select('approval_status')
-      .eq('user_id', user.id)
-      .single();
-
-    // Allow access to dashboard even if pending, but we can show a notice
-    // Only redirect if not a seller at all (no record)
-    if (!seller && !isAdminRoute) {
-      // Allow signup flow to complete first
-      if (request.nextUrl.pathname !== '/signup') {
-        return NextResponse.redirect(new URL('/signup', request.url));
-      }
-    }
-  }
-
-  return response;
+  return supabaseResponse;
 }
 
-// Proxy configuration for Next.js 16+
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
