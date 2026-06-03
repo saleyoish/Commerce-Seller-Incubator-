@@ -64,6 +64,19 @@ export default function LoginPage() {
         .eq('email', data.email)
         .single();
 
+      // Check seller approval status if not admin
+      if (!admin) {
+        const { data: seller } = await supabase
+          .from('sellers')
+          .select('approval_status')
+          .eq('email', data.email)
+          .single();
+
+        if (seller?.approval_status !== 'approved') {
+          throw new Error('You are not approved yet. Please wait for admin approval.');
+        }
+      }
+
       posthog.identify(data.email, { email: data.email });
       posthog.capture('seller_logged_in', {
         email: data.email,
