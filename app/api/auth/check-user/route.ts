@@ -32,12 +32,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    console.log(`[CHECK-USER-API] User: ${user?.id || 'NONE'}, Error: ${authError?.message || 'OK'}`);
+  console.log(`[CHECK-USER-API] User: ${user?.id || 'NONE'} | Token Error: ${authError?.message || 'OK'}`);
 
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized', isSeller: false, isAdmin: false, user: null },
-        { status: 401 }
+  if (authError) {
+    console.error(`[CHECK-USER-API] Auth error:`, authError);
+  }
+
+  if (!user) {
       );
     }
 

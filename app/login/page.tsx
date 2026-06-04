@@ -58,6 +58,9 @@ export default function LoginPage() {
 
       if (authError) throw authError;
 
+      // Wait for session to be established (cookies to be set)
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       const { data: admin } = await supabase
         .from('admins')
         .select('id')
