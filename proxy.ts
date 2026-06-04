@@ -5,7 +5,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
 
 export async function proxy(request: NextRequest) {
-  const supabaseResponse = NextResponse.next({
+  let supabaseResponse = NextResponse.next({
     request,
   });
 
@@ -15,14 +15,17 @@ export async function proxy(request: NextRequest) {
         return request.cookies.getAll();
       },
       setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          // Set on both request (for downstream) and response (for browser)
+        cookiesToSet.forEach(({ name, value }) => {
           request.cookies.set(name, value);
+        });
+        // Rebuild response with updated cookies
+        supabaseResponse = NextResponse.next({ request });
+        cookiesToSet.forEach(({ name, value, options }) => {
           supabaseResponse.cookies.set(name, value, {
             ...options,
             path: '/',
             sameSite: 'lax',
-            secure: true, // Always secure on Vercel (HTTPS)
+            secure: true,
             maxAge: options?.maxAge,
           });
         });
@@ -30,7 +33,7 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  // Get user - this refreshes the session
+  // Get user - this triggers token refresh
   const { data: { user }, error: userError } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
