@@ -1,12 +1,28 @@
 // API route to check if current user is admin
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSideSupabase } from '@/lib/supabase-server';
+import { createServerClient } from '@supabase/ssr';
 import { createAdminSupabase } from '@/lib/supabase-admin';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+if (!supabaseUrl || !supabasePublishableKey) {
+  throw new Error('Missing Supabase environment variables');
+}
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
-    // Use regular client to check auth
-    const supabase = await createServerSideSupabase();
+    // Create Supabase client for API route with proper cookie handling
+    const supabase = createServerClient(supabaseUrl, supabasePublishableKey, {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          // Cookies are read-only in API routes
+        },
+      },
+    });
     
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
