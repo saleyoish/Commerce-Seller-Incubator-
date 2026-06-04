@@ -22,6 +22,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           // Cookies are read-only in API routes
         },
       },
+      global: {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        }
+      }
     });
     
     // Get current user

@@ -23,7 +23,8 @@ export const createClientSideSupabase = () => {
     global: {
       headers: {
         'x-my-custom-header': 'commerce-seller-incubator',
-        'Prefer': 'return=representation'
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
       }
     }
   });
