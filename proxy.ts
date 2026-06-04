@@ -5,70 +5,51 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
 
 export async function proxy(request: NextRequest) {
-  // Build the response object first — cookies must be written onto this
-  // response for the session refresh to persist across requests.
-  let supabaseResponse = NextResponse.next({
+  const supabaseResponse = NextResponse.next({
     request,
   });
 
-  // Create the Supabase client using the response we control so that
-  // setAll() can write the refreshed token cookies back to the browser.
-  const isProduction = process.env.NODE_ENV === 'production';
-  
   const supabase = createServerClient(supabaseUrl, supabasePublishableKey, {
     cookies: {
       getAll() {
         return request.cookies.getAll();
       },
       setAll(cookiesToSet) {
-        // First write onto the request (for downstream server components)
-        cookiesToSet.forEach(({ name, value }) =>
-          request.cookies.set(name, value)
-        );
-        // Rebuild supabaseResponse so the new cookies are included
-        supabaseResponse = NextResponse.next({ request });
         cookiesToSet.forEach(({ name, value, options }) => {
+          // Set on both request (for downstream) and response (for browser)
+          request.cookies.set(name, value);
           supabaseResponse.cookies.set(name, value, {
             ...options,
-            secure: isProduction,
-            sameSite: 'lax',
             path: '/',
+            sameSite: 'lax',
+            secure: true, // Always secure on Vercel (HTTPS)
+            maxAge: options?.maxAge,
           });
         });
       },
     },
-    global: {
-      headers: {
-        'Prefer': 'return=representation'
-      }
-    }
   });
 
-  // IMPORTANT: always call getUser() before any early returns.
-  // This is what triggers the silent token refresh and writes the new
-  // cookie. Returning early before this call means stale tokens never
-  // get refreshed and getUser() will return null in Server Components.
+  // Get user - this refreshes the session
   const { data: { user }, error: userError } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
-  
-  // Debug logging for seller/admin routes
-  const isSellerOrAdmin = pathname.startsWith('/seller') || pathname.startsWith('/admin');
-  if (isSellerOrAdmin) {
-    const cookies = request.cookies.getAll();
-    console.log(`[PROXY] Path: ${pathname}`);
-    console.log(`[PROXY] User: ${user?.id || 'null'}`);
-    console.log(`[PROXY] Error: ${userError?.message || 'none'}`);
-    console.log(`[PROXY] Cookies count: ${cookies.length}`);
-    cookies.forEach(c => {
-      if (c.name.includes('sb-')) {
-        console.log(`[PROXY] Cookie: ${c.name.substring(0, 20)}...`);
-      }
-    });
+
+  // Debug logging
+  if (pathname.startsWith('/seller') || pathname.startsWith('/admin')) {
+    console.log(`[AUTH-PROXY] ${pathname} | User: ${user?.id || 'NONE'} | Error: ${userError?.message || 'OK'}`);
   }
 
-  // Public paths — no auth required, but token refresh above already ran
-  const publicPaths = ['/', '/login', '/signup', '/forgot-password', '/reset-password', '/waitlist-success'];
+  // Public paths
+  const publicPaths = [
+    '/',
+    '/login',
+    '/signup',
+    '/forgot-password',
+    '/reset-password',
+    '/waitlist-success',
+  ];
+
   const isPublicRoute =
     publicPaths.includes(pathname) ||
     pathname.startsWith('/api/auth') ||
@@ -82,22 +63,20 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/training');
 
   if (isPublicRoute) {
-    // Return supabaseResponse (not NextResponse.next()) so refreshed
-    // cookies set above are included in the response.
     return supabaseResponse;
   }
 
   const isSellerRoute = pathname.startsWith('/seller') || pathname.startsWith('/dashboard');
   const isAdminRoute = pathname.startsWith('/admin');
 
-  // Redirect unauthenticated users to login
+  // Protected routes - require authentication
   if ((isSellerRoute || isAdminRoute) && !user) {
-    const redirectUrl = new URL('/login', request.url);
-    redirectUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(redirectUrl);
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
-  // For admin routes, verify the user has an admin row
+  // Admin routes - verify admin status
   if (isAdminRoute && user) {
     const { data: admin } = await supabase
       .from('admins')
