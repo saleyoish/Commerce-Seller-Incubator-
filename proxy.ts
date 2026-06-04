@@ -13,6 +13,8 @@ export async function proxy(request: NextRequest) {
 
   // Create the Supabase client using the response we control so that
   // setAll() can write the refreshed token cookies back to the browser.
+  const isProduction = process.env.NODE_ENV === 'production';
+  
   const supabase = createServerClient(supabaseUrl, supabasePublishableKey, {
     cookies: {
       getAll() {
@@ -25,9 +27,13 @@ export async function proxy(request: NextRequest) {
         );
         // Rebuild supabaseResponse so the new cookies are included
         supabaseResponse = NextResponse.next({ request });
-        cookiesToSet.forEach(({ name, value, options }) =>
-          supabaseResponse.cookies.set(name, value, options)
-        );
+        cookiesToSet.forEach(({ name, value, options }) => {
+          supabaseResponse.cookies.set(name, value, {
+            ...options,
+            secure: isProduction,
+            sameSite: options?.sameSite || 'lax',
+          });
+        });
       },
     },
   });
