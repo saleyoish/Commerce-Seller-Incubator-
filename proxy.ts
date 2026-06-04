@@ -31,20 +31,41 @@ export async function proxy(request: NextRequest) {
           supabaseResponse.cookies.set(name, value, {
             ...options,
             secure: isProduction,
-            sameSite: options?.sameSite || 'lax',
+            sameSite: 'lax',
+            path: '/',
           });
         });
       },
     },
+    global: {
+      headers: {
+        'Prefer': 'return=representation'
+      }
+    }
   });
 
   // IMPORTANT: always call getUser() before any early returns.
   // This is what triggers the silent token refresh and writes the new
   // cookie. Returning early before this call means stale tokens never
   // get refreshed and getUser() will return null in Server Components.
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
+  
+  // Debug logging for seller/admin routes
+  const isSellerOrAdmin = pathname.startsWith('/seller') || pathname.startsWith('/admin');
+  if (isSellerOrAdmin) {
+    const cookies = request.cookies.getAll();
+    console.log(`[PROXY] Path: ${pathname}`);
+    console.log(`[PROXY] User: ${user?.id || 'null'}`);
+    console.log(`[PROXY] Error: ${userError?.message || 'none'}`);
+    console.log(`[PROXY] Cookies count: ${cookies.length}`);
+    cookies.forEach(c => {
+      if (c.name.includes('sb-')) {
+        console.log(`[PROXY] Cookie: ${c.name.substring(0, 20)}...`);
+      }
+    });
+  }
 
   // Public paths — no auth required, but token refresh above already ran
   const publicPaths = ['/', '/login', '/signup', '/forgot-password', '/reset-password', '/waitlist-success'];
