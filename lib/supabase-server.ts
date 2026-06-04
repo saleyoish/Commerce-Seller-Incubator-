@@ -21,35 +21,21 @@ export const createServerSideSupabase = async () => {
   
   return createServerClient(supabaseUrl!, supabasePublishableKey!, {
     cookies: {
-      get(name: string) {
-        return cookieStore.get(name)?.value;
+      getAll() {
+        return cookieStore.getAll();
       },
-      set(name: string, value: string, options: any) {
+      setAll(cookiesToSet) {
         try {
-          cookieStore.set({ 
-            name, 
-            value, 
-            ...options,
-            secure: isProduction,
-            sameSite: options?.sameSite || 'lax'
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, {
+              ...options,
+              secure: isProduction,
+              sameSite: options?.sameSite || 'lax',
+            });
           });
         } catch {
-          // set() throws when called from a Server Component during rendering.
-          // This is expected — the session is still readable via get().
-        }
-      },
-      remove(name: string, options: any) {
-        try {
-          cookieStore.set({ 
-            name, 
-            value: '', 
-            ...options,
-            maxAge: 0,
-            secure: isProduction,
-            sameSite: options?.sameSite || 'lax'
-          });
-        } catch {
-          // Same as above — expected in Server Component render context.
+          // setAll() throws when called from a Server Component during rendering.
+          // This is expected — the session is still readable via getAll().
         }
       },
     },
