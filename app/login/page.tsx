@@ -61,8 +61,9 @@ export default function LoginPage() {
       // Wait for session to be established (cookies to be set)
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Call server action to check role (runs on server, sees auth session)
-      const { redirectTo } = await checkUserRoleAfterLogin(data.email);
+      // Call server action to check role using the authenticated session
+      // (no need to pass email — server gets user from session)
+      const { redirectTo } = await checkUserRoleAfterLogin();
 
       // Use a full page navigation so the server receives the new session
       // cookie on the next request. router.push() does a client-side
