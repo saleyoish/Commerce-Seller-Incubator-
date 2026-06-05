@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { getCookieConfig } from '@/lib/cookie-config';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
@@ -20,13 +21,14 @@ export async function proxy(request: NextRequest) {
         });
         // Rebuild response with updated cookies
         supabaseResponse = NextResponse.next({ request });
+        const cookieConfig = getCookieConfig();
         cookiesToSet.forEach(({ name, value, options }) => {
           supabaseResponse.cookies.set(name, value, {
             ...options,
-            path: '/',
-            sameSite: 'lax',
-            secure: true,
-            maxAge: options?.maxAge,
+            path: cookieConfig.path,
+            sameSite: cookieConfig.sameSite,
+            secure: cookieConfig.secure,
+            maxAge: options?.maxAge ?? cookieConfig.maxAge,
           });
         });
       },
