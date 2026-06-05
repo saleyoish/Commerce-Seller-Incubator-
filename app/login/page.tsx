@@ -60,29 +60,14 @@ export default function LoginPage() {
       // Wait for session to be established (cookies to be set)
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      const { data: admin } = await supabase
-        .from('admins')
-        .select('id')
-        .eq('email', data.email)
-        .single();
-
-      // Check seller approval status if not admin
-      if (!admin) {
-        const { data: seller } = await supabase
-          .from('sellers')
-          .select('approval_status')
-          .eq('email', data.email)
-          .single();
-
-        if (seller?.approval_status !== 'approved') {
-          throw new Error('You are not approved yet. Please wait for admin approval.');
-        }
-      }
+      // Import server action to check role (ensures RLS policies see the auth cookie)
+      const { checkUserRoleAfterLogin } = await import('./actions');
+      const { redirectTo } = await checkUserRoleAfterLogin(data.email);
 
       // Use a full page navigation so the server receives the new session
       // cookie on the next request. router.push() does a client-side
       // transition and the server layout won't see the fresh cookie yet.
-      window.location.href = admin ? '/admin' : '/seller';
+      window.location.href = redirectTo;
     } catch (err: unknown) {
       const error = err instanceof Error ? err : new Error(String(err));
       setError(error.message || 'Invalid email or password');
