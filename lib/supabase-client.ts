@@ -19,7 +19,7 @@ export const createClientSideSupabase = () => {
   // document.cookie correctly and handles URL-encoded values / chunked
   // tokens out of the box. Custom cookie implementations break in
   // production when tokens contain '=' characters.
-  const client = createBrowserClient(supabaseUrl!, supabasePublishableKey!, {
+  const client = createBrowserClient('/api/supabase', supabasePublishableKey!, {
     global: {
       headers: {
         'x-my-custom-header': 'commerce-seller-incubator',
