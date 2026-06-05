@@ -25,7 +25,8 @@ export const createClientSideSupabase = () => {
         'x-my-custom-header': 'commerce-seller-incubator',
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-      }
+      },
+      fetch: (input, init) => fetch(input, { ...init, credentials: 'include' }),
     }
   });
 
