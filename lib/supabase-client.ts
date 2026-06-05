@@ -19,14 +19,42 @@ export const createClientSideSupabase = () => {
   // document.cookie correctly and handles URL-encoded values / chunked
   // tokens out of the box. Custom cookie implementations break in
   // production when tokens contain '=' characters.
-  const client = createBrowserClient('/api/supabase', supabasePublishableKey!, {
+  const supabaseOrigin = new URL(supabaseUrl).origin;
+
+  const client = createBrowserClient(supabaseUrl, supabasePublishableKey, {
     global: {
       headers: {
         'x-my-custom-header': 'commerce-seller-incubator',
         'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
-      fetch: (input, init) => fetch(input, { ...init, credentials: 'include' }),
+      fetch: async (input, init) => {
+        const originalRequest = typeof input === 'string' ? new Request(input, init) : new Request(input, init);
+        const originalUrl = new URL(originalRequest.url);
+
+        if (originalUrl.origin === supabaseOrigin) {
+          const proxyUrl = new URL(`/api/supabase${originalUrl.pathname}`, window.location.origin);
+          proxyUrl.search = originalUrl.search;
+
+          const proxiedRequest = new Request(proxyUrl.toString(), {
+            method: originalRequest.method,
+            headers: originalRequest.headers,
+            body: originalRequest.body,
+            redirect: originalRequest.redirect,
+            credentials: 'include',
+            cache: originalRequest.cache,
+            mode: originalRequest.mode,
+            referrer: originalRequest.referrer,
+            referrerPolicy: originalRequest.referrerPolicy,
+            integrity: originalRequest.integrity,
+            keepalive: originalRequest.keepalive,
+          });
+
+          return fetch(proxiedRequest);
+        }
+
+        return fetch(originalRequest, { ...init, credentials: 'include' });
+      },
     }
   });
 
