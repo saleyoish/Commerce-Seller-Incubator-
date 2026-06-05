@@ -3,6 +3,7 @@
 
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { getCookieConfig } from '@/lib/cookie-config';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -19,6 +20,8 @@ export const createServerSideSupabase = async () => {
   const cookieStore = await cookies();
   const isProduction = process.env.NODE_ENV === 'production';
   
+  const cookieConfig = getCookieConfig();
+
   return createServerClient(supabaseUrl!, supabasePublishableKey!, {
     cookies: {
       getAll() {
@@ -28,9 +31,9 @@ export const createServerSideSupabase = async () => {
         try {
           cookiesToSet.forEach(({ name, value, options }) => {
             cookieStore.set(name, value, {
+              ...cookieConfig,
               ...options,
-              secure: isProduction,
-              sameSite: options?.sameSite || 'lax',
+              path: cookieConfig.path,
             });
           });
         } catch {

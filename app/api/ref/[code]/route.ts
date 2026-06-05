@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getCookieConfig } from '@/lib/cookie-config';
 
 export async function GET(
   request: Request,
@@ -17,8 +18,7 @@ export async function GET(
 
   // Set cookie in response
   response.cookies.set("referral_code", code, {
-    maxAge: 60 * 60 * 24 * 30, // 30 days
-    path: "/",
+    ...getCookieConfig(60 * 60 * 24 * 30),
   });
 
   console.log("[API Ref] Cookie set for code:", code);
