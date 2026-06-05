@@ -6,7 +6,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { createClientSideSupabase } from '@/lib/supabase-client';
-import { checkUserRoleAfterLogin } from './actions';
 import { PasswordInput } from '@/components/ui/password-input';
 import {
   Sparkles,
@@ -58,17 +57,12 @@ export default function LoginPage() {
 
       if (authError) throw authError;
 
-      // Wait for session to be established (cookies to be set)
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Wait a bit for the session to be established and cookies to be set
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Call server action to check role using the authenticated session
-      // (no need to pass email — server gets user from session)
-      const { redirectTo } = await checkUserRoleAfterLogin();
-
-      // Use a full page navigation so the server receives the new session
-      // cookie on the next request. router.push() does a client-side
-      // transition and the server layout won't see the fresh cookie yet.
-      window.location.href = redirectTo;
+      // Navigate to seller dashboard - middleware will handle auth verification
+      // on the next request and redirect to login if not authenticated
+      window.location.href = '/seller';
     } catch (err: unknown) {
       const error = err instanceof Error ? err : new Error(String(err));
       setError(error.message || 'Invalid email or password');
