@@ -42,7 +42,7 @@ export async function POST(request: Request) {
               </div>
               
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/admin" 
+                <a href="${process.env.NEXT_PUBLIC_SITE_URL}/admin" 
                    style="display: inline-block; background: linear-gradient(135deg, #dc2626 0%, #db2777 100%); color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
                   View Admin Dashboard
                 </a>

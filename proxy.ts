@@ -61,7 +61,6 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/api/waitlist-signup') ||
     pathname.startsWith('/live/') ||
     pathname.startsWith('/ref/') ||
-    pathname.startsWith('/apply') ||
     pathname.startsWith('/leaderboard') ||
     pathname.startsWith('/training');
 

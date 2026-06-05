@@ -6,8 +6,8 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const META_APP_ID = process.env.META_APP_ID || '';
 const META_APP_SECRET = process.env.META_APP_SECRET || '';
-const REDIRECT_URI = process.env.FACEBOOK_REDIRECT_URI || 'http://localhost:3000/api/facebook/callback';
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL;
+const REDIRECT_URI = BASE_URL + '/api/facebook/callback';
 
 export async function GET(request: NextRequest) {
   try {

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSideSupabase } from '@/lib/supabase-server';
 import { createStripeConnectAccount, createConnectOnboardingLink } from '@/lib/stripe';
-import { getPostHogClient } from '@/lib/posthog-server';
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,23 +37,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Create onboarding link
-    const origin = request.headers.get('origin') || 'http://localhost:3000';
+    const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL;
     const accountLink = await createConnectOnboardingLink(
       stripeAccountId,
       `${origin}/dashboard?onboarding=refresh`,
       `${origin}/dashboard?onboarding=success`
     );
 
-    const posthog = getPostHogClient();
-    posthog.capture({
-      distinctId: session.user.email || seller.id,
-      event: 'stripe_connect_started',
-      properties: {
-        seller_id: seller.id,
-        stripe_account_id: stripeAccountId,
-        is_new_account: !seller.stripe_account_id,
-      },
-    });
 
     return NextResponse.json({ url: accountLink.url });
   } catch (error: any) {

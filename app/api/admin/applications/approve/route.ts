@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     // Send approval email
     try {
       await fetch(
-        `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/email/application-approved`,
+        `${process.env.NEXT_PUBLIC_SITE_URL}/api/email/application-approved`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/admin/applications?success=true`
+      `${process.env.NEXT_PUBLIC_SITE_URL}/admin/applications?success=true`
     );
   } catch (error) {
     console.error("Approve application error:", error);

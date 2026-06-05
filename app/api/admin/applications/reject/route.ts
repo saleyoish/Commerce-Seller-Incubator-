@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     // Send rejection email
     try {
       await fetch(
-        `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/email/application-rejected`,
+        `${process.env.NEXT_PUBLIC_SITE_URL}/api/email/application-rejected`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/admin/applications?rejected=true`
+      `${process.env.NEXT_PUBLIC_SITE_URL}/admin/applications?rejected=true`
     );
   } catch (error) {
     console.error("Reject application error:", error);

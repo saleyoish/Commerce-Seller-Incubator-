@@ -7,7 +7,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { createClientSideSupabase } from '@/lib/supabase-client';
 import { PasswordInput } from '@/components/ui/password-input';
-import posthog from 'posthog-js';
 import {
   Sparkles,
   ShieldCheck,
@@ -79,12 +78,6 @@ export default function LoginPage() {
           throw new Error('You are not approved yet. Please wait for admin approval.');
         }
       }
-
-      posthog.identify(data.email, { email: data.email });
-      posthog.capture('seller_logged_in', {
-        email: data.email,
-        role: admin ? 'admin' : 'seller',
-      });
 
       // Use a full page navigation so the server receives the new session
       // cookie on the next request. router.push() does a client-side

@@ -104,7 +104,7 @@ export default async function ReferralsPage() {
     );
   }
 
-  const referralLink = `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/ref/${seller?.referral_code || ""}`;
+  const referralLink = `${process.env.NEXT_PUBLIC_SITE_URL}/ref/${seller?.referral_code || ""}`;
 
   return (
     <div className="max-w-6xl mx-auto p-6">

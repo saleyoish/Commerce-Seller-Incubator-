@@ -3,7 +3,6 @@ import { stripe } from '@/lib/stripe';
 import { createAdminSupabase } from '@/lib/supabase-admin';
 import { sendSaleNotification } from '@/lib/resend';
 import { PLATFORM_CONFIG } from '@/lib/config';
-import { getPostHogClient } from '@/lib/posthog-server';
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -89,21 +88,12 @@ export async function POST(request: NextRequest) {
         amount - platformFee
       );
 
-      const posthog = getPostHogClient();
-      posthog.capture({
-        distinctId: session.customer_details?.email || sellerId,
-        event: 'purchase_completed',
-        properties: {
-          product_id: productId,
-          product_name: product.name,
-          seller_id: sellerId,
-          amount,
-          platform_fee: platformFee,
-          seller_earnings: amount - platformFee,
-          quantity: parseInt(quantity || '1'),
-          stripe_session_id: session.id,
-          buyer_email: session.customer_details?.email || null,
-        },
+      return NextResponse.json({
+        platform_fee: platformFee,
+        seller_earnings: amount - platformFee,
+        quantity: parseInt(quantity || '1'),
+        stripe_session_id: session.id,
+        buyer_email: session.customer_details?.email || null,
       });
 
       console.log(`Sale completed: ${productId}, amount: ${amount}, seller: ${sellerId}`);

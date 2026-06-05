@@ -43,7 +43,7 @@ export default function ReferralsPage() {
 
   const baseUrl = typeof window !== 'undefined' 
     ? `${window.location.protocol}//${window.location.host}`
-    : 'http://localhost:3000';
+    : process.env.NEXT_PUBLIC_SITE_URL;
   const referralLink = seller?.referral_code 
     ? `${baseUrl}/ref/${seller.referral_code}`
     : '';

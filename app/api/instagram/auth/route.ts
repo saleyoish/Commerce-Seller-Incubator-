@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 const META_APP_ID = process.env.META_APP_ID || '';
-const REDIRECT_URI = process.env.INSTAGRAM_REDIRECT_URI || 'http://localhost:3000/api/instagram/callback';
+const REDIRECT_URI = process.env.NEXT_PUBLIC_SITE_URL + '/api/instagram/callback';
 
 // Scopes required for Instagram Business/Creator account access
 const SCOPES = [

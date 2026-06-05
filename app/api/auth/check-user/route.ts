@@ -12,12 +12,12 @@ if (!supabaseUrl || !supabasePublishableKey) {
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     // Create Supabase client for API route with proper cookie handling
-    const supabase = createServerClient(supabaseUrl, supabasePublishableKey, {
+    const supabase = createServerClient(supabaseUrl!, supabasePublishableKey!, {
       cookies: {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: any) {
           // Cookies are read-only in API routes
         },
       },
@@ -39,8 +39,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 
   if (!user) {
-      );
-    }
+    return NextResponse.json(
+      { error: 'No authenticated user', isSeller: false, isAdmin: false, user: null },
+      { status: 401 }
+    );
+  }
 
     // Use regular client with user's auth to query (RLS will apply)
     // Check if user is seller

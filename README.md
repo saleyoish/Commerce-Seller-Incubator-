@@ -29,7 +29,6 @@ A full-stack Next.js 14+ application for live commerce sellers to upload product
 - **Backend**: Next.js API Routes, Supabase (Auth + PostgreSQL)
 - **Payments**: Stripe Connect (Express accounts)
 - **Email**: Resend
-- **Analytics**: PostHog
 - **Deployment**: Vercel
 
 ## Quick Start
@@ -52,7 +51,6 @@ Required services:
 - **Supabase**: Create project at [supabase.com](https://supabase.com)
 - **Stripe**: Create account at [stripe.com](https://stripe.com) + enable Connect
 - **Resend**: Create account at [resend.com](https://resend.com)
-- **PostHog**: Create project at [posthog.com](https://posthog.com)
 
 ### 3. Database Setup
 Run the schema in Supabase SQL Editor:

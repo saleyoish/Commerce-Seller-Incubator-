@@ -235,7 +235,7 @@ export async function POST(request: Request) {
     }
 
     // Send notification emails
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
 
     // Send account created email to seller (NO PASSWORD - password will be sent on approval)
     console.log("=== SENDING ACCOUNT CREATED EMAIL ===");

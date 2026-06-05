@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/admin/referrals?success=true`
+      `${process.env.NEXT_PUBLIC_SITE_URL}/admin/referrals?success=true`
     );
   } catch (error) {
     console.error("Mark paid error:", error);

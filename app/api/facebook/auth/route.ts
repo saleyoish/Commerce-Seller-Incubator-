@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 const META_APP_ID = process.env.META_APP_ID || '';
-const REDIRECT_URI = process.env.FACEBOOK_REDIRECT_URI || 'http://localhost:3000/api/facebook/callback';
+const REDIRECT_URI = process.env.NEXT_PUBLIC_SITE_URL + '/api/facebook/callback';
 
 // Scopes required for product catalog access
 const SCOPES = [

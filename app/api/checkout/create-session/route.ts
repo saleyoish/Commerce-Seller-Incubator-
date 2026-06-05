@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Seller not ready to accept payments' }, { status: 400 });
     }
 
-    const origin = request.headers.get('origin') || 'http://localhost:3000';
+    const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL;
 
     // Create Stripe Checkout Session
     const session = await createCheckoutSession({

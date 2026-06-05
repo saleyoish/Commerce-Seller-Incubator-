@@ -18,7 +18,7 @@ export async function POST() {
 
     // Return success response and redirect to login
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/login?loggedOut=true`
+      `${process.env.NEXT_PUBLIC_SITE_URL}/login?loggedOut=true`
     );
   } catch (error) {
     console.error('Logout error:', error);

@@ -11,7 +11,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Sparkles, Check, Video, DollarSign, Globe, TrendingUp, ArrowRight, CheckCircle } from 'lucide-react';
-import posthog from 'posthog-js';
 
 const benefits = [
   { icon: Video, text: "Stream to multiple platforms simultaneously" },
@@ -101,11 +100,6 @@ function SignupPageContent() {
       if (!response.ok) {
         throw new Error(result.error || 'Signup failed');
       }
-
-      posthog.capture('waitlist_signup_completed', {
-        email: formData.email,
-        name: formData.name,
-      });
 
       setIsSubmitted(true);
     } catch (err: any) {

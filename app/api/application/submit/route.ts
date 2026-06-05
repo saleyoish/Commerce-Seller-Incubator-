@@ -103,7 +103,7 @@ export async function POST(request: Request) {
     // Send confirmation email
     try {
       await fetch(
-        `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/email/application-received`,
+        `${process.env.NEXT_PUBLIC_SITE_URL}/api/email/application-received`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -117,7 +117,7 @@ export async function POST(request: Request) {
     // Send admin notification
     try {
       await fetch(
-        `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/email/admin-new-application`,
+        `${process.env.NEXT_PUBLIC_SITE_URL}/api/email/admin-new-application`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

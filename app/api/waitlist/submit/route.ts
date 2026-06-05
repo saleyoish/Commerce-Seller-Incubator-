@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     // Send confirmation email
     try {
       await fetch(
-        `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/email/waitlist-confirmation`,
+        `${process.env.NEXT_PUBLIC_SITE_URL}/api/email/waitlist-confirmation`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

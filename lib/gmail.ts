@@ -3,9 +3,14 @@ import nodemailer from 'nodemailer';
 const gmailUser = process.env.GMAIL_USER || 'theabdulmuqeet@gmail.com';
 const gmailAppPassword = process.env.GMAIL_APP_PASSWORD || 'rkbylzdchkmwbzth';
 
-// Create transporter
+// Create transporter (handle typing/runtime differences: some typings expose
+// `createTransporter` while the runtime commonly provides `createTransport`).
 const createTransporter = () => {
-  return nodemailer.createTransport({
+  const factory = (nodemailer as any).createTransport || (nodemailer as any).createTransporter;
+  if (!factory) {
+    throw new Error('nodemailer transport factory not found');
+  }
+  return factory({
     service: 'gmail',
     auth: {
       user: gmailUser,
@@ -87,7 +92,7 @@ export const sendNewSellerNotificationToAdmin = async (
 ) => {
   try {
     const transporter = createTransporter();
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
 
     await transporter.sendMail({
       from: `"Live Commerce Platform" <${gmailUser}>`,
@@ -196,7 +201,7 @@ export const sendApprovalEmailToSeller = async (
 ) => {
   try {
     const transporter = createTransporter();
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
 
     await transporter.sendMail({
       from: `"Live Commerce Platform" <${gmailUser}>`,

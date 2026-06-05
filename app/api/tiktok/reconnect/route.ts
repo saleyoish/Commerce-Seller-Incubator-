@@ -1,7 +1,6 @@
 import { createServerSideSupabase } from "@/lib/supabase-server";
 import { getTikTokAuthUrl } from "@/lib/tiktok-api";
 import { NextResponse } from "next/server";
-import { getPostHogClient } from "@/lib/posthog-server";
 
 export async function POST() {
   try {
@@ -50,16 +49,7 @@ export async function POST() {
       .eq("is_connected", true);
 
     // Generate TikTok auth URL with reconnection flag
-    const authUrl = getTikTokAuthUrl(seller.id, true);
-
-    const posthog = getPostHogClient();
-    posthog.capture({
-      distinctId: user.email || seller.id,
-      event: "tiktok_reconnect_initiated",
-      properties: {
-        seller_id: seller.id,
-      },
-    });
+    const authUrl = getTikTokAuthUrl(seller.id);
 
     return NextResponse.json({ authUrl });
   } catch (error) {

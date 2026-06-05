@@ -135,7 +135,7 @@ export const sendAdminNewSellerNotification = async (adminEmail: string, sellerE
           <li><strong>Email:</strong> ${sellerEmail}</li>
           <li><strong>Phone:</strong> ${sellerPhone}</li>
         </ul>
-        <p><a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/admin/sellers" style="background-color: #7C3AED; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Review & Approve</a></p>
+        <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/admin/sellers" style="background-color: #7C3AED; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Review & Approve</a></p>
         <p>Best regards,<br>Live Commerce Team</p>
       `,
     });

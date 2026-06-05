@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
 
     // Trigger a demo product sync for the connected seller
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
       await fetch(`${baseUrl}/api/whatnot/sync-products?sellerId=${seller.id}&syncType=pull`, {
         method: 'POST',
       });

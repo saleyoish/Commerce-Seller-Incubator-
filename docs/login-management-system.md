@@ -228,7 +228,6 @@ const loginSchema = z.object({
 6. **If not admin**: queries `sellers` table: `SELECT approval_status FROM sellers WHERE email = ?`.
    - If `approval_status !== 'approved'` → throws "You are not approved yet" error, which signs the auth session out implicitly (the user stays on the login page).
    - If approved → redirects to `/seller`.
-7. PostHog analytics event fired: `seller_logged_in` with email and role.
 
 > **Important**: The approval check at step 6 is client-side JavaScript only. An attacker who can manually set cookies won't be blocked by this check. The real data security is enforced by Postgres RLS which only exposes seller data to the authenticated `user_id` owner.
 

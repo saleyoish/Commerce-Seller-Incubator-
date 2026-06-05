@@ -120,7 +120,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/admin/referrals?success=approved`
+      `${process.env.NEXT_PUBLIC_SITE_URL}/admin/referrals?success=approved`
     );
   } catch (error) {
     console.error("Approve referral error:", error);

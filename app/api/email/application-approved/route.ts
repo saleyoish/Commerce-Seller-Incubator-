@@ -14,7 +14,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const trainingUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/training`;
+    const trainingUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/training`;
 
     const { data, error } = await resend.emails.send({
       from: process.env.FROM_EMAIL || "onboarding@resend.dev",
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
                 <h4 style="margin-top: 0; color: #111827; font-size: 14px;">Quick Links:</h4>
                 <ul style="color: #4b5563; font-size: 14px; padding-left: 20px; margin-bottom: 0;">
                   <li><a href="${trainingUrl}" style="color: #dc2626;">Training Hub</a></li>
-                  <li><a href="${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/dashboard" style="color: #dc2626;">Seller Dashboard</a></li>
+                  <li><a href="${process.env.NEXT_PUBLIC_SITE_URL}/dashboard" style="color: #dc2626;">Seller Dashboard</a></li>
                   <li><a href="#" style="color: #dc2626;">Join Discord Community</a></li>
                 </ul>
               </div>

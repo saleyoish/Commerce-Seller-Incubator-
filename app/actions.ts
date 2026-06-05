@@ -3,7 +3,6 @@
 import { createServerSideSupabase } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getPostHogClient } from "@/lib/posthog-server";
 
 // Account update types
 interface UpdateAccountData {
@@ -161,22 +160,9 @@ export async function submitWaitlistAction(formData: FormData) {
     throw new Error("Failed to submit. Please try again.");
   }
 
-  // Track waitlist submission
-  const posthog = getPostHogClient();
-  posthog.capture({
-    distinctId: email,
-    event: "waitlist_submitted",
-    properties: {
-      name,
-      email,
-      what_you_sell: whatYouSell,
-      has_live_experience: hasLiveExperience,
-    },
-  });
-
   // Send confirmation email
   try {
-    await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/email/waitlist-confirmation`, {
+    await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/email/waitlist-confirmation`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

@@ -98,7 +98,7 @@ export function ProductSelector({
     if (!product) return '';
     
     // Generate TikTok shop product link
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
     return `${baseUrl}/product/${productId}`;
   };
 

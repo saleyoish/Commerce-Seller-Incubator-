@@ -15,7 +15,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const trainingUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/training`;
+    const trainingUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/training`;
 
     const { data, error } = await resend.emails.send({
       from: process.env.FROM_EMAIL || "onboarding@resend.dev",
@@ -83,7 +83,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/admin/training?sent=true`
+      `${process.env.NEXT_PUBLIC_SITE_URL}/admin/training?sent=true`
     );
   } catch (error) {
     console.error("Email API error:", error);

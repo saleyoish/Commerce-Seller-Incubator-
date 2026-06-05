@@ -149,7 +149,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/admin/waitlist?success=true`
+      `${process.env.NEXT_PUBLIC_SITE_URL}/admin/waitlist?success=true`
     );
   } catch (error) {
     console.error("Approve waitlist error:", error);

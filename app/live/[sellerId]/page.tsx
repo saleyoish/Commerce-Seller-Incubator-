@@ -48,7 +48,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import posthog from 'posthog-js';
 
 export default function LiveShowPage() {
   const params = useParams();
@@ -156,19 +155,9 @@ export default function LiveShowPage() {
         throw new Error(data.error || 'Failed to create checkout session');
       }
 
-      posthog.capture('checkout_initiated', {
-        product_id: selectedProduct.id,
-        product_name: selectedProduct.name,
-        product_price: selectedProduct.price,
-        quantity,
-        total: selectedProduct.price * quantity,
-        seller_id: sellerId,
-      });
-
       // Redirect to Stripe Checkout
       window.location.href = data.url;
     } catch (err: any) {
-      posthog.captureException(err);
       setError(err.message || 'Failed to initiate checkout');
     } finally {
       setCheckoutLoading(false);
