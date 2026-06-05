@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendPasswordResetEmail } from '@/lib/resend';
+import { getCookieConfig } from '@/lib/cookie-config';
 
 export async function POST(request: Request) {
   try {
@@ -86,6 +87,7 @@ export async function POST(request: Request) {
     } else {
       console.log('SUPABASE_SECRET_KEY not set, using SSR client fallback');
       // Fallback to SSR client (may have rate limits)
+      const cookieConfig = getCookieConfig();
       const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
@@ -95,10 +97,22 @@ export async function POST(request: Request) {
               return cookieStore.get(name)?.value;
             },
             set(name: string, value: string, options: any) {
-              cookieStore.set({ name, value, ...options });
+              cookieStore.set({
+                name,
+                value,
+                ...options,
+                ...cookieConfig,
+                path: cookieConfig.path,
+              });
             },
             remove(name: string, options: any) {
-              cookieStore.set({ name, value: '', ...options });
+              cookieStore.set({
+                name,
+                value: '',
+                ...options,
+                ...cookieConfig,
+                path: cookieConfig.path,
+              });
             },
           },
         }

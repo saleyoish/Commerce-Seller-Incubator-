@@ -46,6 +46,7 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     setError(null);
+    console.log('[LOGIN] submit', { email: data.email });
 
     try {
       const supabase = createClientSideSupabase();
@@ -57,6 +58,7 @@ export default function LoginPage() {
 
       if (authError) throw authError;
 
+      console.log('[LOGIN] auth success', { email: data.email });
       // Wait a bit for the session to be established and cookies to be set
       await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -65,6 +67,7 @@ export default function LoginPage() {
       window.location.href = '/seller';
     } catch (err: unknown) {
       const error = err instanceof Error ? err : new Error(String(err));
+      console.error('[LOGIN] auth error', error);
       setError(error.message || 'Invalid email or password');
     } finally {
       setIsLoading(false);

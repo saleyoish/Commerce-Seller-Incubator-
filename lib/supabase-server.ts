@@ -21,6 +21,10 @@ export const createServerSideSupabase = async () => {
   const isProduction = process.env.NODE_ENV === 'production';
   
   const cookieConfig = getCookieConfig();
+  console.log('[SUPABASE-SERVER] createServerSideSupabase', {
+    env: process.env.NODE_ENV,
+    siteUrl: process.env.NEXT_PUBLIC_SITE_URL,
+  });
 
   return createServerClient(supabaseUrl!, supabasePublishableKey!, {
     cookies: {
@@ -30,13 +34,25 @@ export const createServerSideSupabase = async () => {
       setAll(cookiesToSet) {
         try {
           cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, {
-              ...cookieConfig,
+            const mergedOptions = {
               ...options,
+              ...cookieConfig,
               path: cookieConfig.path,
+            };
+            cookieStore.set(name, value, mergedOptions);
+            console.log('[SUPABASE-SERVER] setAll cookie', {
+              name,
+              options: {
+                sameSite: mergedOptions.sameSite,
+                secure: mergedOptions.secure,
+                path: mergedOptions.path,
+                maxAge: mergedOptions.maxAge,
+                httpOnly: mergedOptions.httpOnly,
+              },
             });
           });
-        } catch {
+        } catch (error) {
+          console.error('[SUPABASE-SERVER] setAll failed', error);
           // setAll() throws when called from a Server Component during rendering.
           // This is expected — the session is still readable via getAll().
         }

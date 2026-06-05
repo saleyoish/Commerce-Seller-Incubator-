@@ -29,10 +29,16 @@ export const createClientSideSupabase = () => {
     }
   });
 
-  // Handle auth errors (e.g., invalid refresh token)
-  client.auth.onAuthStateChange((event) => {
+  // Handle auth errors and state changes
+  client.auth.onAuthStateChange((event, session) => {
+    console.log('[SUPABASE-CLIENT] auth state changed', {
+      event,
+      hasSession: !!session,
+      userId: session?.user?.id,
+    });
+
     if (event === 'TOKEN_REFRESHED') {
-      console.log('Token refreshed successfully');
+      console.log('[SUPABASE-CLIENT] token refreshed successfully');
     }
   });
 
