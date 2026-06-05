@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { createClientSideSupabase } from '@/lib/supabase-client';
+import { checkUserRoleAfterLogin } from './actions';
 import { PasswordInput } from '@/components/ui/password-input';
 import {
   Sparkles,
@@ -60,8 +61,7 @@ export default function LoginPage() {
       // Wait for session to be established (cookies to be set)
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Import server action to check role (ensures RLS policies see the auth cookie)
-      const { checkUserRoleAfterLogin } = await import('./actions');
+      // Call server action to check role (runs on server, sees auth session)
       const { redirectTo } = await checkUserRoleAfterLogin(data.email);
 
       // Use a full page navigation so the server receives the new session
