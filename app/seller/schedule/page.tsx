@@ -174,7 +174,7 @@ function ScheduleContent() {
           .from('stream_sessions')
           .select('*')
           .eq('seller_id', sellerData.id)
-          .in('status', ['scheduled', 'live', 'completed', 'cancelled'])
+          .in('status', ['scheduled', 'live', 'ended', 'cancelled'])
           .order('scheduled_start', { ascending: false });
 
         setScheduledShows(showsData || []);
@@ -820,7 +820,7 @@ function ScheduleContent() {
               <CardTitle className="text-[var(--text-primary)] flex items-center gap-2">
                 Past Shows
                 <Badge variant="outline" className="text-xs text-[var(--text-muted)]">
-                  {scheduledShows.filter(s => s.status === 'completed' || s.status === 'cancelled').length}
+                  {scheduledShows.filter(s => s.status === 'ended' || s.status === 'cancelled').length}
                 </Badge>
               </CardTitle>
               <CardDescription className="text-[var(--text-muted)]">
@@ -829,13 +829,13 @@ function ScheduleContent() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3 max-h-64 overflow-y-auto">
-                {scheduledShows.filter(s => s.status === 'completed' || s.status === 'cancelled').length === 0 ? (
+                {scheduledShows.filter(s => s.status === 'ended' || s.status === 'cancelled').length === 0 ? (
                   <div className="text-center py-6 text-[var(--text-muted)]">
                     <p className="text-sm">No past shows yet</p>
                   </div>
                 ) : (
                   scheduledShows
-                    .filter(s => s.status === 'completed' || s.status === 'cancelled')
+                    .filter(s => s.status === 'ended' || s.status === 'cancelled')
                     .sort((a, b) => new Date(b.scheduled_start || '').getTime() - new Date(a.scheduled_start || '').getTime())
                     .slice(0, 10)
                     .map((show) => (
@@ -847,12 +847,12 @@ function ScheduleContent() {
                               <Badge 
                                 variant="outline" 
                                 className={`text-xs ${
-                                  show.status === 'completed' 
+                                  show.status === 'ended' 
                                     ? 'border-green-500 text-green-400' 
                                     : 'border-red-500 text-red-400'
                                 }`}
                               >
-                                {show.status === 'completed' ? 'Completed' : 'Cancelled'}
+                                {show.status === 'ended' ? 'Completed' : 'Cancelled'}
                               </Badge>
                             </div>
                             <p className="text-sm text-[var(--text-muted)] flex items-center gap-1">

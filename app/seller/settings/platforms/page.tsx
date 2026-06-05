@@ -95,9 +95,9 @@ export default function PlatformsSettingsPage() {
   const getConnectionStatus = (platform: string): PlatformConnection | undefined => {
     // For meta-commerce-shop, check for 'meta' platform in database
     if (platform === 'meta-commerce-shop') {
-      return connections.find(c => c.platform === 'meta');
+      return connections.find(c => c.platform === ('meta' as const));
     }
-    return connections.find(c => c.platform === platform);
+    return connections.find(c => c.platform === (platform as any));
   };
 
   const getStatusBadge = (platformId: string) => {

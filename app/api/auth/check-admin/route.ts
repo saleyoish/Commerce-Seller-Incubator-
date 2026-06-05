@@ -12,6 +12,14 @@ if (!supabaseUrl || !supabasePublishableKey) {
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
+    // Ensure environment variables are defined
+    if (!supabaseUrl || !supabasePublishableKey) {
+      return NextResponse.json(
+        { error: 'Server configuration error. Environment variables not set for supabaseUrl or supabasePublishableKey', isAdmin: false },
+        { status: 500 }
+      );
+    }
+
     // Create Supabase client for API route with proper cookie handling
     const supabase = createServerClient(supabaseUrl, supabasePublishableKey, {
       cookies: {

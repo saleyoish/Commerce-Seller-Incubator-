@@ -107,7 +107,7 @@ export type Admin = {
 // M3: Multi-Stream Expansion Types
 // ============================================
 
-export type Platform = 'tiktok' | 'whatnot' | 'youtube' | 'facebook' | 'instagram' | 'platform_site';
+export type Platform = 'tiktok' | 'whatnot' | 'youtube' | 'facebook' | 'instagram' | 'meta' | 'platform_site';
 
 export type PlatformConnection = {
   id: string;

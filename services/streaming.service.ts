@@ -115,8 +115,7 @@ export class StreamingService {
 
       if (reason) {
         update.metadata = {
-          ended_reason: reason,
-          ended_at: new Date().toISOString()
+          ended_reason: reason
         };
       }
 

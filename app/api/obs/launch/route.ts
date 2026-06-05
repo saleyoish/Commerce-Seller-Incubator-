@@ -80,21 +80,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         
         // Update stream session with OBS launch info
         if (streamSessionId) {
-          supabase
-            .from('stream_sessions')
-            .update({
-              metadata: {
-                obs_launched: true,
-                obs_launched_at: new Date().toISOString(),
-                obs_path: obsPath,
-                products_in_stream: products || []
-              }
+          Promise.resolve(
+            supabase
+              .from('stream_sessions')
+              .update({
+                metadata: {
+                  obs_launched: true,
+                  obs_launched_at: new Date().toISOString(),
+                  obs_path: obsPath,
+                  products_in_stream: products || []
+                }
+              })
+              .eq('id', streamSessionId)
+          )
+            .then((result) => {
+              console.log('Stream session updated with OBS launch info', result);
             })
-            .eq('id', streamSessionId)
-            .then(() => {
-              console.log('Stream session updated with OBS launch info');
-            })
-            .catch((err) => {
+            .catch((err: any) => {
               console.error('Failed to update stream session:', err);
             });
         }
@@ -148,7 +150,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         }
       }, 10000);
 
-      obsProcess.on('exit', (code, signal) => {
+      obsProcess.on('exit', (code: number, signal: string) => {
         if (!launched) {
           console.error('OBS exited before launch:', code, signal);
           

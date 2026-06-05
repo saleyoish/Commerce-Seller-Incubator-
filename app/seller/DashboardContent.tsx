@@ -47,6 +47,15 @@ import {
   Cell,
 } from 'recharts';
 
+// Type for the partial sales data returned from the select query
+type PartialSale = {
+  amount: number;
+  platform_fee: number;
+  status: string;
+  created_at: string;
+  product_id?: string;
+};
+
 function DashboardContentInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -144,13 +153,13 @@ function DashboardContentInner() {
         }
 
         const { count: productCount } = await supabase.from('products').select('*', { count: 'exact', head: true }).eq('seller_id', sellerData.id);
-        const { data: allSales } = await supabase.from('sales').select('amount, platform_fee, status, created_at').eq('seller_id', sellerData.id).eq('status', 'completed');
+        const { data: allSales } = await supabase.from('sales').select('amount, platform_fee, status, created_at, product_id').eq('seller_id', sellerData.id).eq('status', 'completed');
         const totalRevenue = allSales?.reduce((sum, sale) => sum + (sale.amount - sale.platform_fee), 0) || 0;
 
         setStats({ totalProducts: productCount || 0, totalSales: allSales?.length || 0, totalRevenue, pendingPayout: totalRevenue });
 
         // Prepare chart data with better error handling
-        const salesByMonth = allSales?.reduce((acc: any, sale: Sale) => {
+        const salesByMonth = allSales?.reduce((acc: any, sale: PartialSale) => {
           if (!sale || !sale.created_at) return acc;
           const month = new Date(sale.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
           acc[month] = (acc[month] || 0) + (sale.amount - sale.platform_fee);
@@ -162,7 +171,7 @@ function DashboardContentInner() {
           revenue: amount || 0,
         }));
 
-        const revenueByDay = allSales?.slice(-30).reduce((acc: any, sale: Sale) => {
+        const revenueByDay = allSales?.slice(-30).reduce((acc: any, sale: PartialSale) => {
           if (!sale || !sale.created_at) return acc;
           const day = new Date(sale.created_at).getDate();
           acc[day] = (acc[day] || 0) + (sale.amount - sale.platform_fee);
@@ -174,7 +183,7 @@ function DashboardContentInner() {
           revenue: amount || 0,
         }));
 
-        const topProducts = allSales?.reduce((acc: any, sale: Sale) => {
+        const topProducts = allSales?.reduce((acc: any, sale: PartialSale) => {
           if (!sale || !(sale as any).product_id) return acc;
           acc[(sale as any).product_id] = (acc[(sale as any).product_id] || 0) + 1;
           return acc;

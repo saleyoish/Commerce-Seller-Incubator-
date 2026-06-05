@@ -433,7 +433,7 @@ export default function AdminSalesPage() {
               <Label htmlFor="platform">Platform</Label>
               <Select
                 value={editFormData.platform}
-                onValueChange={(value) => setEditFormData({ ...editFormData, platform: value })}
+                onValueChange={(value) => setEditFormData({ ...editFormData, platform: value ?? 'Could not determine platform.' })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select platform" />

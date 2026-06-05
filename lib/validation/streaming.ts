@@ -1,6 +1,7 @@
 // Export enums for easy access
-export { StreamStatus, StreamType, WebhookEventType } from '../types/streaming';
-import { STREAMING_CONSTANTS } from '@/constants/streaming';
+export { StreamStatus, StreamType, WebhookEventType } from '../../types/streaming';
+import { STREAMING_CONSTANTS, StreamStatus, StreamType, WebhookEventType } from '@/constants/streaming';
+import z from 'zod';
 
 // Validation schemas for streaming operations
 
@@ -78,7 +79,7 @@ export const StreamStatusUpdateSchema = z.object({
   actual_start: z.string().datetime().optional(),
   actual_end: z.string().datetime().optional(),
   ended_at: z.string().datetime().optional(),
-  metadata: z.record(z.any()).optional()
+  metadata: z.record(z.string(), z.any()).optional()
 });
 
 // Environment variable validation

@@ -78,7 +78,7 @@ export const StreamStatusUpdateSchema = z.object({
   actual_start: z.string().datetime().optional(),
   actual_end: z.string().datetime().optional(),
   ended_at: z.string().datetime().optional(),
-  metadata: z.record(z.any()).optional()
+  metadata: z.record(z.string(), z.any()).optional()
 });
 
 // Environment variable validation
