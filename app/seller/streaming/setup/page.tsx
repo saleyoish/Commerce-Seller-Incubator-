@@ -9,7 +9,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { createClientSideSupabase } from '@/lib/supabase-client';
 import {
   CheckCircle,
   ExternalLink,
@@ -94,23 +93,29 @@ export default function StreamingSetupPage() {
     try {
       setIsLoading(true);
       setError(null);
-      const supabase = createClientSideSupabase();
 
-      // Get current user
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (authError || !user) {
+      const authRes = await fetch('/api/auth/check-user', { credentials: 'include' });
+      if (!authRes.ok) {
+        console.log('No user found, redirecting to login');
+        router.push('/login');
+        return;
+      }
+      const userData = await authRes.json();
+      if (!userData.user) {
         console.log('No user found, redirecting to login');
         router.push('/login');
         return;
       }
 
+      const { db: dbClient } = await import('@/lib/db');
+
       // Get seller data - prioritize seller with valid stream key
       let seller = null;
       try {
-        const { data: sellerDataList, error } = await supabase
+        const { data: sellerDataList, error } = await dbClient
           .from('sellers')
           .select('restream_username, restream_stream_key')
-          .eq('user_id', user.id)
+          .eq('user_id', userData.user.id)
           .order('created_at', { ascending: false });
 
         if (error) {
@@ -118,7 +123,7 @@ export default function StreamingSetupPage() {
           // Don't show error, just continue with empty data
         } else if (sellerDataList && sellerDataList.length > 0) {
           // First, look for a seller with a valid stream key
-          seller = sellerDataList.find(s => s.restream_stream_key && 
+          seller = sellerDataList.find((s: any) => s.restream_stream_key && 
                                           s.restream_stream_key !== 'NOT_CONFIGURED' && 
                                           s.restream_stream_key.length > 10);
           
@@ -154,7 +159,6 @@ export default function StreamingSetupPage() {
     } catch (err: any) {
       console.error('Unexpected error loading credentials:', err);
       // Don't show error to user, just log it
-      // setError('Note: Database setup may be needed. You can still enter your credentials below.');
     } finally {
       setIsLoading(false);
     }
@@ -166,38 +170,42 @@ export default function StreamingSetupPage() {
       setError(null);
       setSuccess(null);
 
-      const supabase = createClientSideSupabase();
-
-      // Get current user
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (authError || !user) {
+      const authRes = await fetch('/api/auth/check-user', { credentials: 'include' });
+      if (!authRes.ok) {
         setError('Please login first');
         return;
       }
+      const userData = await authRes.json();
+      if (!userData.user) {
+        setError('Please login first');
+        return;
+      }
+
+      const { db: dbClient } = await import('@/lib/db');
 
       // Check if seller record exists first by user_id, then by email
       let existingSellers = null;
       let existingSeller = null;
 
-      const { data: sellersById } = await supabase
+      const { data: sellersById } = await dbClient
         .from('sellers')
         .select('id, restream_stream_key')
-        .eq('user_id', user.id)
+        .eq('user_id', userData.user.id)
         .order('created_at', { ascending: false });
 
       existingSellers = sellersById;
 
-      if ((!existingSellers || existingSellers.length === 0) && user.email) {
-        const { data: sellersByEmail } = await supabase
+      if ((!existingSellers || existingSellers.length === 0) && userData.user.email) {
+        const { data: sellersByEmail } = await dbClient
           .from('sellers')
           .select('id, restream_stream_key')
-          .eq('email', user.email)
+          .eq('email', userData.user.email)
           .order('created_at', { ascending: false });
         existingSellers = sellersByEmail;
       }
 
       if (existingSellers && existingSellers.length > 0) {
-        existingSeller = existingSellers.find(s => s.restream_stream_key && 
+        existingSeller = existingSellers.find((s: any) => s.restream_stream_key && 
                                                  s.restream_stream_key !== 'NOT_CONFIGURED' && 
                                                  s.restream_stream_key.length > 10);
         if (!existingSeller) {
@@ -211,14 +219,14 @@ export default function StreamingSetupPage() {
       }
 
       // Update seller record with Restream credentials
-      const { error: updateError } = await supabase
+      const { error: updateError } = await dbClient
         .from('sellers')
         .update({
           restream_username: formData.restreamUsername,
           restream_stream_key: formData.streamKey,
           updated_at: new Date().toISOString(),
         })
-        .eq('user_id', user.id);
+        .eq('user_id', userData.user.id);
 
       if (updateError) {
         console.error('Update error:', updateError);

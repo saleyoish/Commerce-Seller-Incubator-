@@ -1,41 +1,45 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSideSupabase } from '@/lib/supabase-server';
+import { db } from '@/lib/db';
+import { verifyJWT, extractToken } from '@/lib/jwt';
 import { stripe } from '@/lib/stripe';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createServerSideSupabase();
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (!session) {
+    const token = extractToken(request.headers, request.cookies);
+    if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get seller's Stripe account ID
-    const { data: seller } = await supabase
+    const payload = await verifyJWT(token);
+    if (!payload) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    // Get seller's Stripe account ID using custom auth (id, not user_id)
+    const { data: seller } = await db
       .from('sellers')
       .select('stripe_account_id')
-      .eq('user_id', session.user.id)
+      .eq('id', payload.userId)
       .single();
 
     if (!seller?.stripe_account_id) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         status: 'not_started',
-        isActive: false 
+        isActive: false
       });
     }
 
     // Fetch account details from Stripe
     const account = await stripe.accounts.retrieve(seller.stripe_account_id);
-    
+
     const isActive = account.charges_enabled && account.payouts_enabled;
 
     // Update seller record if status changed
     if (isActive) {
-      await supabase
+      await db
         .from('sellers')
         .update({ stripe_onboarding_status: 'active' })
-        .eq('user_id', session.user.id);
+        .eq('id', payload.userId);
     }
 
     return NextResponse.json({

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCookieConfig } from '@/lib/cookie-config';
+import { extractToken } from '@/lib/jwt';
 
 function getRequiredEnvVar(name: string, value: string | undefined): string {
   if (!value) {
@@ -60,6 +61,12 @@ async function proxyRequest(req: NextRequest, params: { path?: string[] }) {
   const url = buildSupabaseUrl(params.path, new URL(req.url).search);
   const headers = new Headers(req.headers);
   headers.set('apikey', supabasePublishableKey);
+
+  // Add JWT token for custom auth if available
+  const token = extractToken(req.headers, req.cookies);
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
 
   headers.delete('host');
   headers.delete('content-length');

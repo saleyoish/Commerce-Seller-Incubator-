@@ -1,8 +1,8 @@
-import { createAdminSupabase } from "@/lib/supabase-admin";
+import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { v4 as uuidv4 } from "uuid";
 import {
-  generatePassword,
   sendAccountCreatedToSeller,
   sendNewSellerNotificationToAdmin,
 } from "@/lib/gmail";
@@ -11,17 +11,12 @@ export async function POST(request: Request) {
   try {
     console.log("=== WAITLIST SIGNUP API STARTED ===");
     const body = await request.json();
-    const { name, email, phone, whatYouSell, hasLiveExperience } = body;
-    console.log("Request body:", { name, email, phone, whatYouSell, hasLiveExperience });
+    const { name, email, phone, whatYouSell, hasLiveExperience, referralCode: bodyReferralCode } = body;
 
     // Get referral code from cookie if exists (fallback to request body)
     const cookieStore = await cookies();
     const cookieReferralCode = cookieStore.get("referral_code")?.value;
-    const bodyReferralCode = body.referralCode;
     const referralCode = cookieReferralCode || bodyReferralCode;
-    console.log("Referral code from cookie:", cookieReferralCode);
-    console.log("Referral code from body:", bodyReferralCode);
-    console.log("Final referral code used:", referralCode);
 
     if (!name || !email || !phone || !whatYouSell) {
       return NextResponse.json(
@@ -30,38 +25,26 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabase = createAdminSupabase();
+    const normalizedEmail = email.toLowerCase().trim();
 
-    // Check if auth user already exists
-    const { data: users } = await supabase.auth.admin.listUsers();
-    let existingUser = users?.users.find((u: any) => u.email === email);
+    const { data: existingSeller } = await db
+      .from("sellers")
+      .select("id")
+      .eq("email", normalizedEmail)
+      .maybeSingle();
 
-    // Check if seller account already exists for this user
-    let existingSeller: any = null;
-    
-    if (existingUser) {
-      let sellerData = await supabase
-        .from("sellers")
-        .select("id, approval_status")
-        .eq("user_id", existingUser.id)
-        .maybeSingle();
-
-      existingSeller = sellerData;
-
-      if (existingSeller) {
-        return NextResponse.json(
-          { error: "An account is already connected for this email. Please log in instead." },
-          { status: 409 }
-        );
-      }
+    if (existingSeller) {
+      return NextResponse.json(
+        { error: "An account is already connected for this email. Please log in instead." },
+        { status: 409 }
+      );
     }
 
-    // Check if email already exists in waitlist
-    const { data: existingWaitlist } = await supabase
+    const { data: existingWaitlist } = await db
       .from("waitlist")
       .select("id")
-      .eq("email", email)
-      .single();
+      .eq("email", normalizedEmail)
+      .maybeSingle();
 
     if (existingWaitlist) {
       return NextResponse.json(
@@ -70,59 +53,13 @@ export async function POST(request: Request) {
       );
     }
 
-    // Additional check: If user exists but seller was deleted, remove from waitlist
-    if (existingUser && !existingSeller) {
-      // User exists in auth but no seller record means it was deleted
-      // Remove from waitlist to allow re-registration
-      await supabase
-        .from("waitlist")
-        .delete()
-        .eq("email", email);
-      
-      console.log(`Removed deleted user ${email} from waitlist for re-registration`);
-    }
+    const userId = uuidv4();
 
-    let userId: string;
-    let password: string;
-
-    if (existingUser) {
-      // User already exists, use existing ID
-      userId = existingUser.id;
-      // Generate a new password since we don't know the old one
-      password = generatePassword();
-      // Update the user's password
-      const { error: updateError } = await supabase.auth.admin.updateUserById(
-        userId,
-        { password }
-      );
-      if (updateError) {
-        console.error("Failed to update user password:", updateError);
-      }
-    } else {
-      // Create new auth user with auto-generated password
-      password = generatePassword();
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-      });
-
-      if (authError) {
-        return NextResponse.json(
-          { error: authError.message },
-          { status: 400 }
-        );
-      }
-
-      userId = authData.user!.id;
-    }
-
-    // Insert into waitlist with pending status
-    const { data: waitlistData, error: waitlistError } = await supabase
+    const { data: waitlistData, error: waitlistError } = await db
       .from("waitlist")
       .insert({
         name,
-        email,
+        email: normalizedEmail,
         phone,
         what_you_sell: whatYouSell,
         has_live_experience: hasLiveExperience,
@@ -134,83 +71,59 @@ export async function POST(request: Request) {
 
     if (waitlistError) {
       console.error("Waitlist insert error:", waitlistError);
-      // Rollback: delete auth user if we just created it
-      if (!existingUser) {
-        await supabase.auth.admin.deleteUser(userId);
-      }
       return NextResponse.json(
         { error: `Failed to create waitlist entry: ${waitlistError.message}` },
         { status: 500 }
       );
     }
 
-    // Check if seller record already exists - handle duplicates
-    const { data: sellers } = await supabase
+    const { data: newSeller, error: sellerError } = await db
       .from("sellers")
-      .select("id")
-      .eq("user_id", userId)
-      .order('created_at', { ascending: false })
-      .limit(1);
-    
-    const currentSeller = sellers && sellers.length > 0 ? sellers[0] : null;
+      .insert({
+        user_id: userId,
+        email: normalizedEmail,
+        phone,
+        name: name || null,
+        approval_status: "pending",
+        stripe_onboarding_status: "pending",
+      })
+      .select()
+      .single();
 
-    let sellerId: string | null = null;
-
-    if (!currentSeller) {
-      // Create seller record
-      const { data: newSeller, error: sellerError } = await supabase
-        .from("sellers")
-        .insert({
-          user_id: userId,
-          email,
-          phone,
-          approval_status: "pending",
-          stripe_onboarding_status: "pending",
-        })
-        .select()
-        .single();
-
-      if (sellerError) {
-        console.error("Failed to create seller record:", sellerError);
-      } else {
-        sellerId = newSeller?.id || null;
-        console.log("Created new seller:", sellerId);
+    if (sellerError) {
+      console.error("Failed to create seller record:", sellerError);
+      if (waitlistData?.id) {
+        await db.from("waitlist").delete().eq("id", waitlistData.id);
       }
-    } else {
-      sellerId = existingSeller.id;
-      console.log("Using existing seller:", sellerId);
+      return NextResponse.json(
+        { error: `Failed to create seller record: ${sellerError.message}` },
+        { status: 500 }
+      );
     }
 
-    // Create referral record if referral code exists and seller ID is available
+    const sellerId = newSeller?.id ?? null;
     let referralCreated = false;
     let referralErrorMsg = null;
-    
+
     if (sellerId && referralCode) {
-      // Check if referral already exists for this seller
-      const { data: existingReferral } = await supabase
+      const { data: existingReferral } = await db
         .from("referrals")
         .select("id")
         .eq("referred_id", sellerId)
         .maybeSingle();
 
-      if (existingReferral) {
-        console.log("Referral already exists for this seller");
-        referralErrorMsg = "Referral already exists";
-      } else {
-        // Look up referrer by referral code
-        const { data: referrer } = await supabase
+      if (!existingReferral) {
+        const { data: referrer } = await db
           .from("sellers")
           .select("id")
           .eq("referral_code", referralCode)
-          .single();
+          .maybeSingle();
 
         if (referrer) {
-          console.log("Found referrer:", referrer.id);
-          // Create referral record
-          const { error: referralError } = await supabase.from("referrals").insert({
+          const { error: referralError } = await db.from("referrals").insert({
             referrer_id: referrer.id,
             referred_id: sellerId,
-            referred_email: email,
+            referred_email: normalizedEmail,
             referral_code: referralCode,
             status: "approved",
             bonus_amount: 50,
@@ -221,69 +134,47 @@ export async function POST(request: Request) {
             console.error("Failed to create referral record:", referralError);
             referralErrorMsg = referralError.message;
           } else {
-            console.log("Referral record created successfully:", referrer.id, "->", sellerId);
             referralCreated = true;
           }
         } else {
-          console.warn("Referrer not found for code:", referralCode);
           referralErrorMsg = "Referrer not found for code: " + referralCode;
         }
+      } else {
+        referralErrorMsg = "Referral already exists";
       }
-    } else {
-      console.log("Skipping referral creation - sellerId:", sellerId, "referralCode:", referralCode);
-      referralErrorMsg = "Missing sellerId or referralCode";
     }
 
-    // Send notification emails
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
-
-    // Send account created email to seller (NO PASSWORD - password will be sent on approval)
-    console.log("=== SENDING ACCOUNT CREATED EMAIL ===");
-    console.log("To:", email, "Name:", name);
     try {
-      const result = await sendAccountCreatedToSeller(email, name);
-      console.log("Account created email result:", result);
+      await sendAccountCreatedToSeller(normalizedEmail, name);
     } catch (e: any) {
       console.error("Failed to send account created email to seller:", e);
-      console.error("Error message:", e?.message);
-      console.error("Error stack:", e?.stack);
     }
 
-    // Send notification to all admins
     try {
-      // Try to get admins from 'admins' table first
-      let { data: admins } = await supabase.from("admins").select("email");
-      
-      // If no admins found or table doesn't exist, try profiles table
+      let { data: admins } = await db.from("admins").select("email");
       if (!admins || admins.length === 0) {
-        console.log("No admins found in 'admins' table, trying 'profiles' table...");
-        const { data: adminProfiles } = await supabase
+        const { data: adminProfiles } = await db
           .from("profiles")
           .select("email")
           .eq("role", "admin");
-        
         if (adminProfiles && adminProfiles.length > 0) {
           admins = adminProfiles;
         }
       }
-      
+
       if (admins && admins.length > 0) {
-        console.log(`Sending notifications to ${admins.length} admin(s)`);
         for (const admin of admins) {
           if (admin.email) {
             await sendNewSellerNotificationToAdmin(
               admin.email,
               name,
-              email,
+              normalizedEmail,
               phone,
               whatYouSell,
               hasLiveExperience
             );
-            console.log("Admin notification sent to:", admin.email);
           }
         }
-      } else {
-        console.warn("No admin emails found to send notifications");
       }
     } catch (e) {
       console.error("Failed to send admin notifications:", e);

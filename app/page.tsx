@@ -27,35 +27,27 @@ import HeroButtons from "@/components/hero-buttons";
 import DashboardNav from "@/components/DashboardNav";
 import { GlobalGoLiveButton } from "@/components/streaming/GlobalGoLiveButton";
 import { useState, useEffect } from 'react';
-import { createClientSideSupabase } from '@/lib/supabase-client';
 
 export default function Home() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentSellerId, setCurrentSellerId] = useState<string>('');
 
   useEffect(() => {
-    const supabase = createClientSideSupabase();
-    
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setIsLoggedIn(!!session);
-      
-      if (session) {
-        const { data: seller } = await supabase
-          .from('sellers')
-          .select('id')
-          .eq('user_id', session.user.id)
-          .single();
-        setCurrentSellerId(seller?.id || '');
+      try {
+        const res = await fetch('/api/auth/me', { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          setIsLoggedIn(true);
+          setCurrentSellerId(data.seller?.id || '');
+        } else {
+          setIsLoggedIn(false);
+        }
+      } catch {
+        setIsLoggedIn(false);
       }
     };
     checkAuth();
-    
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsLoggedIn(!!session);
-    });
-    
-    return () => subscription.unsubscribe();
   }, []);
 
   return (

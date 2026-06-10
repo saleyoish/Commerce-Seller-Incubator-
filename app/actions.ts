@@ -1,8 +1,11 @@
 "use server";
 
-import { createServerSideSupabase } from "@/lib/supabase-server";
+import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { verifyJWT } from "@/lib/jwt";
+import { db } from "@/lib/db";
+import { hashPassword, comparePassword } from "@/lib/password";
 
 // Account update types
 interface UpdateAccountData {
@@ -13,58 +16,51 @@ interface UpdateAccountData {
   newPassword?: string;
 }
 
+async function getAuthUser() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get('auth-token')?.value;
+  if (!token) return null;
+  return verifyJWT(token);
+}
+
 // Update user account information
 export async function updateAccountAction(data: UpdateAccountData) {
-  const supabase = await createServerSideSupabase();
-
-  // Get current user
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return { error: 'Unauthorized', success: false };
-  }
+  const payload = await getAuthUser();
+  if (!payload) return { error: 'Unauthorized', success: false };
 
   try {
-    // Update auth user metadata (name)
-    if (data.name) {
-      const { error: updateError } = await supabase.auth.updateUser({
-        data: { full_name: data.name }
-      });
-      if (updateError) throw updateError;
-    }
-
-    // Update email if provided
-    if (data.email && data.email !== user.email) {
-      const { error: emailError } = await supabase.auth.updateUser({
-        email: data.email,
-      });
-      if (emailError) throw emailError;
-    }
+    const updates: Record<string, any> = { updated_at: new Date().toISOString() };
+    if (data.name) updates.name = data.name;
+    if (data.phone) updates.phone = data.phone;
 
     // Update password if provided
     if (data.newPassword && data.currentPassword) {
-      const { error: passwordError } = await supabase.auth.updateUser({
-        password: data.newPassword,
-      });
-      if (passwordError) throw passwordError;
+      const { data: seller } = await db
+        .from('sellers')
+        .select('password_hash')
+        .eq('user_id', payload.userId)
+        .maybeSingle();
+
+      if (!seller?.password_hash) return { error: 'User not found', success: false };
+
+      const isValid = await comparePassword(data.currentPassword, seller.password_hash);
+      if (!isValid) return { error: 'Current password is incorrect', success: false };
+
+      updates.password_hash = await hashPassword(data.newPassword);
+      updates.is_temp_password = false;
     }
 
-    // Update seller profile in sellers table
-    const { error: sellerError } = await supabase
+    const { error: sellerError } = await db
       .from('sellers')
-      .update({
-        name: data.name,
-        phone: data.phone,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('user_id', user.id);
+      .update(updates)
+      .eq('user_id', payload.userId);
 
     if (sellerError) {
-      console.error('Seller update error:', sellerError);
-      // Don't throw here as auth updates might have succeeded
+      console.error('Account update error:', sellerError);
+      return { error: sellerError.message || 'Failed to update account', success: false };
     }
 
-    revalidatePath('/dashboard/settings');
+    revalidatePath('/seller/settings/account');
     return { success: true, message: 'Account updated successfully' };
   } catch (error: any) {
     console.error('Account update error:', error);
@@ -72,38 +68,16 @@ export async function updateAccountAction(data: UpdateAccountData) {
   }
 }
 
-// Delete user account
+// Delete user account (marks as deleted, clears password)
 export async function deleteAccountAction() {
-  const supabase = await createServerSideSupabase();
-
-  // Get current user
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return { error: 'Unauthorized', success: false };
-  }
+  const payload = await getAuthUser();
+  if (!payload) return { error: 'Unauthorized', success: false };
 
   try {
-    // Use admin client to delete user
-    const { createClient } = await import('@supabase/supabase-js');
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      }
-    );
-
-    // Delete user from auth
-    const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(user.id);
-
-    if (deleteError) throw deleteError;
-
-    // Sign out the user
-    await supabase.auth.signOut();
+    await db
+      .from('sellers')
+      .update({ approval_status: 'deleted', password_hash: null, updated_at: new Date().toISOString() })
+      .eq('user_id', payload.userId);
 
     return { success: true, message: 'Account deleted successfully' };
   } catch (error: any) {
@@ -128,21 +102,19 @@ export async function submitWaitlistAction(formData: FormData) {
     throw new Error("You must agree to receive emails");
   }
 
-  const supabase = await createServerSideSupabase();
-
   // Check if email already exists
-  const { data: existing } = await supabase
+  const { data: existing } = await db
     .from("waitlist")
     .select("id")
     .eq("email", email)
-    .single();
+    .maybeSingle();
 
   if (existing) {
     throw new Error("This email is already on our waitlist");
   }
 
   // Insert into waitlist
-  const { data, error } = await supabase
+  const { error } = await db
     .from("waitlist")
     .insert({
       name,
@@ -151,9 +123,7 @@ export async function submitWaitlistAction(formData: FormData) {
       what_you_sell: whatYouSell,
       has_live_experience: hasLiveExperience,
       status: "pending",
-    })
-    .select()
-    .single();
+    });
 
   if (error) {
     console.error("Waitlist submission error:", error);
@@ -165,10 +135,7 @@ export async function submitWaitlistAction(formData: FormData) {
     await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/email/waitlist-confirmation`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        to: email,
-        name,
-      }),
+      body: JSON.stringify({ to: email, name }),
     });
   } catch (e) {
     console.error("Failed to send confirmation email:", e);

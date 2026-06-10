@@ -16,30 +16,21 @@ export default function ForgotPasswordPage() {
 
     setIsLoading(true);
     setError(null);
-    setSuccess(false);
 
     try {
-      const response = await fetch('/api/auth/reset-password', {
+      const res = await fetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email,
-          redirectTo: `${window.location.origin}/reset-password`,
-        }),
+        body: JSON.stringify({ email }),
       });
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to send reset email');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to send reset email');
 
       setSuccess(true);
       setHasRequested(true);
     } catch (err: any) {
-      console.error('Password reset error:', err);
-      if (err.message?.includes('rate limit') || err.message?.includes('429')) {
-        setError('Too many attempts. Please wait 1 hour before trying again.');
-      } else {
-        setError(err.message || 'Failed to send reset email');
-      }
+      setError(err.message || 'Failed to send reset email');
     } finally {
       setIsLoading(false);
     }
@@ -49,7 +40,6 @@ export default function ForgotPasswordPage() {
     <div className="min-h-screen flex items-center justify-center bg-[var(--bg-base)] p-4 animate-fade-in-up">
       <div className="w-full max-w-md">
 
-        {/* Logo */}
         <div className="flex items-center justify-center gap-2 mb-8">
           <div className="w-10 h-10 bg-gradient-to-br from-[#7C3AED] to-[#06B6D4] rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(124,58,237,0.3)]">
             <Sparkles className="w-5 h-5 text-white" />
@@ -58,7 +48,6 @@ export default function ForgotPasswordPage() {
         </div>
 
         <div className="card-premium">
-          {/* Header */}
           <div className="text-center pb-6 border-b border-[var(--border-default)] mb-6">
             <div className="w-12 h-12 rounded-xl bg-[rgba(124,58,237,0.12)] flex items-center justify-center mx-auto mb-4">
               <Mail className="w-6 h-6 text-[var(--accent-primary)]" />
@@ -69,27 +58,22 @@ export default function ForgotPasswordPage() {
             </p>
           </div>
 
-          {/* Error */}
           {error && (
             <div className="mb-5 px-4 py-3 rounded-lg border border-[var(--accent-danger)] bg-[rgba(239,68,68,0.08)] text-[var(--accent-danger)] text-sm">
               {error}
             </div>
           )}
 
-          {/* Success */}
           {success ? (
             <div className="space-y-5">
               <div className="flex items-start gap-3 px-4 py-4 rounded-lg border border-[var(--accent-success)] bg-[rgba(16,185,129,0.08)] text-[var(--accent-success)]">
                 <CheckCircle className="w-5 h-5 shrink-0 mt-0.5" />
                 <div className="text-sm">
                   <p className="font-semibold mb-0.5">Reset link sent!</p>
-                  <p className="opacity-80">Check your email inbox and spam folder. The link expires in 1 hour. If you don&apos;t see it, wait 1 hour before trying again.</p>
+                  <p className="opacity-80">Check your email inbox and spam folder. The link expires in 1 hour.</p>
                 </div>
               </div>
-              <a
-                href="/login"
-                className="flex items-center justify-center gap-2 text-sm text-[var(--accent-primary)] hover:underline"
-              >
+              <a href="/login" className="flex items-center justify-center gap-2 text-sm text-[var(--accent-primary)] hover:underline">
                 <ArrowLeft className="w-4 h-4" />
                 Back to login
               </a>
@@ -99,7 +83,6 @@ export default function ForgotPasswordPage() {
               <div className="space-y-2">
                 <label className="text-sm font-medium text-[var(--text-secondary)]">Email address</label>
                 <input
-                  id="email"
                   type="email"
                   placeholder="you@example.com"
                   value={email}
@@ -118,10 +101,7 @@ export default function ForgotPasswordPage() {
                 {isLoading ? 'Sending...' : 'Send Reset Link'}
               </button>
 
-              <a
-                href="/login"
-                className="flex items-center justify-center gap-2 text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
-              >
+              <a href="/login" className="flex items-center justify-center gap-2 text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors">
                 <ArrowLeft className="w-4 h-4" />
                 Back to login
               </a>

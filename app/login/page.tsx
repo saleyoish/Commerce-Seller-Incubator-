@@ -1,12 +1,11 @@
-'use client';
+"use client";
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { createClientSideSupabase } from '@/lib/supabase-client';
 import { PasswordInput } from '@/components/ui/password-input';
+import { useAuth } from '@/context/AuthContext';
 import {
   Sparkles,
   ShieldCheck,
@@ -31,9 +30,9 @@ const features = [
 ];
 
 export default function LoginPage() {
-  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { login } = useAuth();
 
   const {
     register,
@@ -46,47 +45,38 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     setError(null);
-    console.log('[LOGIN] submit', { email: data.email });
 
     try {
-      const supabase = createClientSideSupabase();
+      const result = await login(data.email, data.password);
+      if (!result.success) throw new Error(result.error || 'Invalid email or password');
 
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email: data.email,
-        password: data.password,
-      });
-
-      if (authError) throw authError;
-
-      console.log('[LOGIN] auth success', { email: data.email });
-      // Wait a bit for the session to be established and cookies to be set
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Navigate to seller dashboard - middleware will handle auth verification
-      // on the next request and redirect to login if not authenticated
-      window.location.href = '/seller';
+      const user = (result as any).user;
+      
+      if (user?.isAdmin) {
+        window.location.href = '/admin';
+      } else if (user?.is_temp_password) {
+        window.location.href = '/seller?change_password=true';
+      } else {
+        window.location.href = '/seller';
+      }
     } catch (err: unknown) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      console.error('[LOGIN] auth error', error);
-      setError(error.message || 'Invalid email or password');
+      const e = err instanceof Error ? err : new Error(String(err));
+      setError(e.message || 'Invalid email or password');
     } finally {
       setIsLoading(false);
     }
   };
-
 
   return (
     <div className="min-h-screen flex animate-fade-in-up">
 
       {/* ── Left panel: branding ── */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-[var(--bg-surface)]">
-        {/* decorative glows */}
         <div className="pointer-events-none absolute top-0 left-0 w-full h-full bg-gradient-to-br from-[#7C3AED]/15 via-transparent to-[#06B6D4]/15" />
         <div className="pointer-events-none absolute top-1/4 left-1/4 w-80 h-80 bg-[#7C3AED]/10 rounded-full blur-3xl" />
         <div className="pointer-events-none absolute bottom-1/4 right-1/4 w-64 h-64 bg-[#06B6D4]/10 rounded-full blur-3xl" />
 
         <div className="relative z-10 flex flex-col justify-center px-12 xl:px-20">
-          {/* Logo */}
           <div className="flex items-center gap-3 mb-10">
             <div className="w-12 h-12 bg-gradient-to-br from-[#7C3AED] to-[#06B6D4] rounded-xl flex items-center justify-center shadow-[0_0_24px_rgba(124,58,237,0.4)]">
               <Sparkles className="w-6 h-6 text-white" />
@@ -129,13 +119,11 @@ export default function LoginPage() {
           </div>
 
           <div className="card-premium">
-            {/* Card header */}
             <div className="text-center pb-6 border-b border-[var(--border-default)] mb-6">
               <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Welcome Back</h1>
               <p className="text-sm text-[var(--text-muted)] mt-2">Access your seller or admin dashboard</p>
             </div>
 
-            {/* Error alert */}
             {error && (
               <div className="mb-5 px-4 py-3 rounded-lg border border-[var(--accent-danger)] bg-[rgba(239,68,68,0.08)] text-[var(--accent-danger)] text-sm">
                 {error}
@@ -143,7 +131,6 @@ export default function LoginPage() {
             )}
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-              {/* Email */}
               <div className="space-y-2">
                 <label htmlFor="email" className="text-sm font-medium text-[var(--text-secondary)]">
                   Email
@@ -160,7 +147,6 @@ export default function LoginPage() {
                 )}
               </div>
 
-              {/* Password with eye toggle */}
               <PasswordInput
                 label="Password"
                 placeholder="••••••••"
@@ -178,23 +164,15 @@ export default function LoginPage() {
               </button>
             </form>
 
-
-            {/* Footer links */}
             <div className="mt-6 space-y-3 text-center text-sm">
               <p>
-                <a
-                  href="/forgot-password"
-                  className="text-[var(--accent-primary)] hover:underline transition-colors"
-                >
+                <a href="/forgot-password" className="text-[var(--accent-primary)] hover:underline transition-colors">
                   Forgot password?
                 </a>
               </p>
               <p className="text-[var(--text-muted)]">
                 Don&apos;t have an account?{' '}
-                <a
-                  href="/signup"
-                  className="text-[var(--accent-primary)] hover:underline transition-colors font-medium"
-                >
+                <a href="/signup" className="text-[var(--accent-primary)] hover:underline transition-colors font-medium">
                   Sign up as Seller
                 </a>
               </p>

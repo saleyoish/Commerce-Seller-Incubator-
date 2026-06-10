@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { createClientSideSupabase, type PlatformSale, type Seller } from '@/lib/supabase-client';
+import { type PlatformSale, type Seller } from '@/lib/supabase-client';
 import { checkUserStatus } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -56,13 +56,15 @@ export default function SalesPage() {
 
   const handleDeleteSale = async (saleId: string) => {
     try {
-      const supabase = createClientSideSupabase();
-      const { error } = await supabase
-        .from('platform_sales')
-        .delete()
-        .eq('id', saleId);
+      const res = await fetch(`/api/sales/${saleId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
 
-      if (error) throw error;
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to delete sale');
+      }
 
       await loadSalesData();
     } catch (error: any) {
@@ -75,6 +77,8 @@ export default function SalesPage() {
     try {
       const { isSeller, isAdmin, seller: sellerData } = await checkUserStatus();
       
+      console.log('User status check:', { isSeller, isAdmin, sellerData });
+
       if (!isSeller && !isAdmin) {
         router.push('/login');
         return;
@@ -83,19 +87,26 @@ export default function SalesPage() {
       setSeller(sellerData);
 
       if (sellerData) {
-        const supabase = createClientSideSupabase();
-        const { data: salesData, error: salesError } = await supabase
-          .from('platform_sales')
-          .select('*')
-          .eq('seller_id', sellerData.id)
-          .order('sale_date', { ascending: false });
+        // Use API route with JWT authentication instead of direct Supabase
+        const res = await fetch('/api/sales', {
+          credentials: 'include',
+        });
 
-        if (salesError) throw salesError;
-        setSales(salesData || []);
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || 'Failed to load sales data');
+        }
+
+        const data = await res.json();
+        setSales(data.sales || []);
+      } else {
+        console.error('No seller data found');
+        throw new Error('Seller data not found');
       }
     } catch (error) {
       console.error('Error loading sales:', error);
-      setError('Failed to load sales data');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load sales data';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -317,19 +328,23 @@ export default function SalesPage() {
                   const saleDate = (document.getElementById('edit-sale-date') as HTMLInputElement)?.value;
                   
                   try {
-                    const supabase = createClientSideSupabase();
-                    const { error } = await supabase
-                      .from('platform_sales')
-                      .update({
+                    // Use API route with JWT authentication instead of direct Supabase
+                    const res = await fetch(`/api/sales/${editingSale.id}`, {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      credentials: 'include',
+                      body: JSON.stringify({
                         product_name: productName,
                         sale_amount: saleAmount,
                         platform: platform,
                         sale_date: saleDate,
-                        updated_at: new Date().toISOString(),
-                      })
-                      .eq('id', editingSale.id);
+                      }),
+                    });
 
-                    if (error) throw error;
+                    if (!res.ok) {
+                      const errorData = await res.json();
+                      throw new Error(errorData.error || 'Failed to update sale');
+                    }
 
                     await loadSalesData();
                     setIsEditing(false);

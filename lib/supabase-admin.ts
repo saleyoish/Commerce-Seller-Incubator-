@@ -1,29 +1,38 @@
 // Admin/Service role client (server-only, uses secret key)
 // Only import this in API routes for admin operations
 
-import { createClient } from '@supabase/supabase-js';
+import { db } from '@/lib/db';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
-
-if (!supabaseUrl) {
-  throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable');
-}
-
-if (!supabaseSecretKey) {
-  throw new Error('Missing SUPABASE_SECRET_KEY environment variable');
-}
-
+/**
+ * Compatibility shim for `createAdminSupabase()`.
+ *
+ * Many server routes import `createAdminSupabase()` to bypass RLS and call
+ * `supabase.from(...)`. To avoid changing dozens of files at once, this shim
+ * forwards `.from()` calls to the shared `db` client. Any direct `auth.admin`
+ * methods are intentionally stubbed and will throw with a helpful message —
+ * please migrate routes that call `auth.admin.*` to DB-only flows or to
+ * explicit handlers.
+ */
 export const createAdminSupabase = () => {
-  return createClient(supabaseUrl!, supabaseSecretKey!, {
+  return {
+    from: (table: string) => db.from(table),
+    rpc: (fn: string, args?: any) => (db.rpc as any)(fn, args),
+    /** stubbed auth.admin helpers — throw to force explicit migration */
     auth: {
-      autoRefreshToken: false,
-      persistSession: false,
+      admin: {
+        createUser: async () => {
+          throw new Error('createUser via admin client is deprecated. Migrate to DB-only user creation or use app/api/auth/register.');
+        },
+        updateUserById: async () => {
+          throw new Error('updateUserById via admin client is deprecated. Migrate to storing hashed passwords in your users table and update there.');
+        },
+        deleteUser: async () => {
+          throw new Error('deleteUser via admin client is deprecated. Migrate to DB-only deletion flows.');
+        },
+        generateLink: async () => {
+          throw new Error('generateLink via admin client is deprecated. Use app/api/auth/forgot-password which implements DB reset tokens.');
+        },
+      },
     },
-    global: {
-      headers: {
-        'Prefer': 'return=representation'
-      }
-    }
-  });
+  } as any;
 };

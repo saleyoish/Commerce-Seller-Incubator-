@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClientSideSupabase } from '@/lib/supabase-client';
 import { Loader2 } from 'lucide-react';
 
 export default function AuthWrapper({ children }: { children: React.ReactNode }) {
@@ -13,22 +12,18 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const supabase = createClientSideSupabase();
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (!user) {
+        const res = await fetch('/api/auth/me', { credentials: 'include' });
+        if (!res.ok) {
           router.push('/login?redirect=/seller');
         } else {
           setIsAuthenticated(true);
         }
-      } catch (error) {
-        console.error('Auth check failed:', error);
+      } catch {
         router.push('/login?redirect=/seller');
       } finally {
         setIsLoading(false);
       }
     };
-
     checkAuth();
   }, [router]);
 
@@ -40,9 +35,7 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
     );
   }
 
-  if (!isAuthenticated) {
-    return null;
-  }
+  if (!isAuthenticated) return null;
 
   return <>{children}</>;
 }

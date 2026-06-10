@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { createClientSideSupabase } from '@/lib/supabase-client';
 
 export default function DashboardNav() {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -11,17 +10,10 @@ export default function DashboardNav() {
   useEffect(() => {
     const checkAdminStatus = async () => {
       try {
-        const supabase = createClientSideSupabase();
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (user) {
-          const { data: admin } = await supabase
-            .from('admins')
-            .select('id')
-            .eq('user_id', user.id)
-            .single();
-          
-          setIsAdmin(!!admin);
+        const res = await fetch('/api/auth/check-user', { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          setIsAdmin(data.isAdmin ?? false);
         }
       } catch (error) {
         console.error('Error checking admin status:', error);
@@ -29,7 +21,6 @@ export default function DashboardNav() {
         setIsLoading(false);
       }
     };
-
     checkAdminStatus();
   }, []);
 

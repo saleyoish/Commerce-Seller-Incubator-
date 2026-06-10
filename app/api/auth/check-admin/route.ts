@@ -1,69 +1,29 @@
-// API route to check if current user is admin
+// GET /api/auth/check-admin — Check if current user is admin
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { createAdminSupabase } from '@/lib/supabase-admin';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-if (!supabaseUrl || !supabasePublishableKey) {
-  throw new Error('Missing Supabase environment variables');
-}
+import { verifyJWT, extractToken } from '@/lib/jwt';
+import { db } from '@/lib/db';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
-    // Ensure environment variables are defined
-    if (!supabaseUrl || !supabasePublishableKey) {
-      return NextResponse.json(
-        { error: 'Server configuration error. Environment variables not set for supabaseUrl or supabasePublishableKey', isAdmin: false },
-        { status: 500 }
-      );
+    const token = extractToken(request.headers, request.cookies);
+    if (!token) {
+      return NextResponse.json({ isAdmin: false }, { status: 401 });
     }
 
-    // Create Supabase client for API route with proper cookie handling
-    const supabase = createServerClient(supabaseUrl, supabasePublishableKey, {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          // Cookies are read-only in API routes
-        },
-      },
-      global: {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        }
-      }
-    });
-    
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized', isAdmin: false },
-        { status: 401 }
-      );
+    const payload = await verifyJWT(token);
+    if (!payload) {
+      return NextResponse.json({ isAdmin: false }, { status: 401 });
     }
 
-    // Use admin client (service role) to bypass RLS
-    const adminSupabase = createAdminSupabase();
-    
-    // Check if user is admin
-    const { data: adminData } = await adminSupabase
+    const { data: admin } = await db
       .from('admins')
       .select('id')
-      .eq('user_id', user.id)
+      .eq('user_id', payload.userId)
       .maybeSingle();
 
-    return NextResponse.json({ isAdmin: !!adminData });
+    return NextResponse.json({ isAdmin: !!admin });
   } catch (error) {
     console.error('Error checking admin status:', error);
-    return NextResponse.json(
-      { error: 'Internal server error', isAdmin: false },
-      { status: 500 }
-    );
+    return NextResponse.json({ isAdmin: false }, { status: 500 });
   }
 }

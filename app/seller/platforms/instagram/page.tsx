@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { createClientSideSupabase, type PlatformConnection, type Seller } from '@/lib/supabase-client';
-import { checkUserStatus } from '@/lib/auth';
+import { type PlatformConnection, type Seller } from '@/lib/supabase-client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -68,36 +67,34 @@ export default function InstagramSetupPage() {
 
   const loadData = async () => {
     try {
-      const supabase = createClientSideSupabase();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.push('/login'); return; }
-      const { data: sellerData } = await supabase.from('sellers').select('*').eq('user_id', user.id).maybeSingle();
-      
-      // Check if user is admin (admins can access without seller record)
-      const { data: adminData } = await supabase.from('admins').select('id').eq('user_id', user.id).maybeSingle();
-      
-      if (!sellerData && !adminData) { router.push('/signup'); return; }
+      const res = await fetch('/api/auth/check-user', { credentials: 'include' });
+      if (!res.ok) { router.push('/login'); return; }
+      const userData = await res.json();
+      if (!userData.user) { router.push('/login'); return; }
+      const { db: dbClient } = await import('@/lib/db');
+      const { data: sellerData } = await dbClient.from('sellers').select('*').eq('user_id', userData.user.id).maybeSingle();
+      if (!sellerData && !userData.isAdmin) { router.push('/signup'); return; }
       setSeller(sellerData);
-      
+
       // Only fetch connections if seller exists
       if (sellerData) {
-        const { data: connectionData } = await supabase.from('platform_connections').select('*').eq('seller_id', sellerData.id).eq('platform', 'instagram').maybeSingle();
-      if (connectionData) {
-        setConnection(connectionData);
-        const metadata = connectionData.metadata || {};
-        setFormData(prev => ({
-          ...prev,
-          accessToken: metadata.accessToken || connectionData.access_token || '',
-          followerCount: metadata.followerCount || '',
-          step2Complete: metadata.step2Complete || false,
-          step3Complete: metadata.step3Complete || false,
-          step4Complete: metadata.step4Complete || false,
-          step5Complete: metadata.step5Complete || false,
-        }));
-        if (metadata.completedSteps) {
-          setCurrentStep(metadata.completedSteps);
+        const { data: connectionData } = await dbClient.from('platform_connections').select('*').eq('seller_id', sellerData.id).eq('platform', 'instagram').maybeSingle();
+        if (connectionData) {
+          setConnection(connectionData);
+          const metadata = connectionData.metadata || {};
+          setFormData(prev => ({
+            ...prev,
+            accessToken: metadata.accessToken || connectionData.access_token || '',
+            followerCount: metadata.followerCount || '',
+            step2Complete: metadata.step2Complete || false,
+            step3Complete: metadata.step3Complete || false,
+            step4Complete: metadata.step4Complete || false,
+            step5Complete: metadata.step5Complete || false,
+          }));
+          if (metadata.completedSteps) {
+            setCurrentStep(metadata.completedSteps);
+          }
         }
-      }
       }
     } catch (error) {
       setError('Failed to load data');

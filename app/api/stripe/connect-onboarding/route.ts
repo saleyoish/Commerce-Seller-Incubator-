@@ -1,21 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSideSupabase } from '@/lib/supabase-server';
+import { db } from '@/lib/db';
+import { verifyJWT, extractToken } from '@/lib/jwt';
 import { createStripeConnectAccount, createConnectOnboardingLink } from '@/lib/stripe';
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerSideSupabase();
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (!session) {
+    const token = extractToken(request.headers, request.cookies);
+    if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get seller record
-    const { data: seller, error: sellerError } = await supabase
+    const payload = await verifyJWT(token);
+    if (!payload) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    // Get seller record using custom auth (id, not user_id)
+    const { data: seller, error: sellerError } = await db
       .from('sellers')
       .select('*')
-      .eq('user_id', session.user.id)
+      .eq('id', payload.userId)
       .single();
 
     if (sellerError || !seller) {
@@ -26,7 +30,7 @@ export async function POST(request: NextRequest) {
 
     // Create Stripe Connect account if not exists
     if (!stripeAccountId) {
-      const account = await createStripeConnectAccount(seller.email);
+      const du= await createStripeConnectAccount(seller.email);
       stripeAccountId = account.id;
 
       // Update seller with Stripe account ID

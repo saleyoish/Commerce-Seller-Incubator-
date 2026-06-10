@@ -1,7 +1,7 @@
 import nodemailer from 'nodemailer';
 
-const gmailUser = process.env.GMAIL_USER || 'theabdulmuqeet@gmail.com';
-const gmailAppPassword = process.env.GMAIL_APP_PASSWORD || 'rkbylzdchkmwbzth';
+const gmailUser = process.env.GMAIL_USER;
+const gmailAppPassword = process.env.GMAIL_APP_PASSWORD;
 
 // Create transporter (handle typing/runtime differences: some typings expose
 // `createTransporter` while the runtime commonly provides `createTransport`).
@@ -10,6 +10,11 @@ const createTransporter = () => {
   if (!factory) {
     throw new Error('nodemailer transport factory not found');
   }
+
+  if (!gmailUser || !gmailAppPassword) {
+    throw new Error('Gmail credentials are not configured. Set GMAIL_USER and GMAIL_APP_PASSWORD in your environment.');
+  }
+
   return factory({
     service: 'gmail',
     auth: {
@@ -251,6 +256,35 @@ export const sendApprovalEmailToSeller = async (
     return { success: true };
   } catch (error) {
     console.error('Failed to send approval email:', error);
+    return { success: false, error };
+  }
+};
+
+// Send password reset via Gmail fallback
+export const sendPasswordResetEmailGmail = async (to: string, resetUrl: string) => {
+  try {
+    const transporter = createTransporter();
+    await transporter.sendMail({
+      from: `"Live Commerce Platform" <${gmailUser}>`,
+      to,
+      subject: 'Password Reset Request',
+      html: `
+        <h1>Password Reset</h1>
+        <p>We received a request to reset your password. Click the link below to reset it:</p>
+        <p style="text-align:center; margin:30px 0;">
+          <a href="${resetUrl}" style="background-color:#3b82f6; color:white; padding:12px 24px; text-decoration:none; border-radius:6px; display:inline-block;">Reset Password</a>
+        </p>
+        <p>Or copy and paste this link in your browser:</p>
+        <p style="word-break:break-all; color:#3b82f6;">${resetUrl}</p>
+        <p>This link expires in 1 hour.</p>
+        <p>If you didn't request this, please ignore this email.</p>
+        <p>Best regards,<br>Live Commerce Team</p>
+      `,
+    });
+    console.log('Password reset email sent via Gmail to:', to);
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to send password reset via Gmail:', error);
     return { success: false, error };
   }
 };

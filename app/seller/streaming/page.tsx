@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { createClientSideSupabase, type StreamSession, type Seller } from '@/lib/supabase-client';
+import { type StreamSession, type Seller } from '@/lib/supabase-client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -43,72 +43,33 @@ export default function StreamingDashboardPage() {
     loadStreamingData();
   }, []);
 
-  // Real-time subscription + polling for stream updates
+  // Polling for stream updates
   useEffect(() => {
     if (!seller?.id) return;
 
-    const supabase = createClientSideSupabase();
-    let subscription: any;
-    
-    // Real-time subscription with error handling
-    try {
-      subscription = supabase
-        .channel(`stream_updates_${seller.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'stream_sessions',
-            filter: `seller_id=eq.${seller.id}`,
-          },
-          (payload) => {
-            console.log('Stream update received:', payload);
-            loadStreamingData();
-          }
-        )
-        .subscribe((status: string) => {
-          if (status === 'SUBSCRIBED') {
-            console.log('Successfully subscribed to stream updates');
-          } else if (status === 'CHANNEL_ERROR') {
-            console.warn('Stream subscription error - falling back to polling only');
-          }
-        });
-    } catch (err) {
-      console.warn('Failed to create subscription, using polling only:', err);
-    }
-
-    // Polling fallback (every 10 seconds) - always works
     const pollInterval = setInterval(() => {
       loadStreamingData();
     }, 10000);
-
-    return () => {
-      if (subscription) {
-        subscription.unsubscribe().catch(() => {});
-      }
-      clearInterval(pollInterval);
-    };
+    return () => clearInterval(pollInterval);
   }, [seller?.id]);
 
   const loadStreamingData = async () => {
     try {
       setError(null);
-      const supabase = createClientSideSupabase();
+      const authRes = await fetch('/api/auth/check-user', { credentials: 'include' });
+      if (!authRes.ok) { router.push('/login'); return; }
+      const userData = await authRes.json();
+      if (!userData.user) { router.push('/login'); return; }
+      const user = { id: userData.user.id, email: userData.user.email };
+      const isAdminUser = userData.isAdmin;
 
-      // Get current user directly from Supabase
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-      if (authError || !user) {
-        router.push('/login');
-        return;
-      }
+      const { db: dbClient } = await import('@/lib/db');
 
       // Check if user is seller (include Restream credentials) with email fallback
       let sellerDataList = null;
       let sellerData = null;
 
-      const { data: sellersById } = await supabase
+      const { data: sellersById } = await dbClient
         .from('sellers')
         .select('*, restream_username, restream_stream_key')
         .eq('user_id', user.id)
@@ -117,8 +78,8 @@ export default function StreamingDashboardPage() {
       sellerDataList = sellersById;
 
       // If no sellers by user_id, or if the sellers don't have keys, try email
-      if ((!sellerDataList || sellerDataList.length === 0 || !sellerDataList.some(s => s.restream_stream_key && s.restream_stream_key !== 'NOT_CONFIGURED')) && user.email) {
-        const { data: sellersByEmail } = await supabase
+      if ((!sellerDataList || sellerDataList.length === 0 || !sellerDataList.some((s: any) => s.restream_stream_key && s.restream_stream_key !== 'NOT_CONFIGURED')) && user.email) {
+        const { data: sellersByEmail } = await dbClient
           .from('sellers')
           .select('*, restream_username, restream_stream_key')
           .eq('email', user.email)
@@ -126,14 +87,14 @@ export default function StreamingDashboardPage() {
         
         if (sellersByEmail && sellersByEmail.length > 0) {
           // Use email sellers if they have keys, otherwise keep user_id sellers
-          if (sellersByEmail.some(s => s.restream_stream_key && s.restream_stream_key !== 'NOT_CONFIGURED')) {
+          if (sellersByEmail.some((s: any) => s.restream_stream_key && s.restream_stream_key !== 'NOT_CONFIGURED')) {
             sellerDataList = sellersByEmail;
           }
         }
       }
 
       if (sellerDataList && sellerDataList.length > 0) {
-        sellerData = sellerDataList.find(s => s.restream_stream_key && 
+        sellerData = sellerDataList.find((s: any) => s.restream_stream_key && 
                                              s.restream_stream_key !== 'NOT_CONFIGURED' && 
                                              s.restream_stream_key.length > 10);
         if (!sellerData) {
@@ -141,15 +102,8 @@ export default function StreamingDashboardPage() {
         }
       }
 
-      // Check if user is admin
-      const { data: adminData } = await supabase
-        .from('admins')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
       const isSeller = !!sellerData;
-      const isAdmin = !!adminData;
+      const isAdmin = isAdminUser;
 
       if (!isSeller && !isAdmin) {
         setError('You do not have seller or admin access. Please complete onboarding first.');
@@ -170,7 +124,7 @@ export default function StreamingDashboardPage() {
       // Only fetch seller-specific data if seller exists
       if (sellerData) {
         // Get active/live stream
-        const { data: activeData } = await supabase
+        const { data: activeData } = await dbClient
           .from('stream_sessions')
           .select('*')
           .eq('seller_id', sellerData.id)
@@ -180,7 +134,7 @@ export default function StreamingDashboardPage() {
         setActiveStream(activeData);
 
         // Get upcoming streams
-        const { data: upcomingData } = await supabase
+        const { data: upcomingData } = await dbClient
           .from('stream_sessions')
           .select('*')
           .eq('seller_id', sellerData.id)
@@ -192,7 +146,7 @@ export default function StreamingDashboardPage() {
         setUpcomingStreams(upcomingData || []);
 
         // Get past streams
-        const { data: pastData } = await supabase
+        const { data: pastData } = await dbClient
           .from('stream_sessions')
           .select('*')
           .eq('seller_id', sellerData.id)

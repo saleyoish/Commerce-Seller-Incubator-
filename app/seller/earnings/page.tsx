@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { createClientSideSupabase, type PlatformSale, type Seller } from '@/lib/supabase-client';
+import { type PlatformSale, type Seller } from '@/lib/supabase-client';
 import { checkUserStatus } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -72,33 +72,37 @@ export default function EarningsPage() {
     try {
       // Check user status via API (avoids RLS issues)
       const { isSeller, isAdmin, seller: sellerData } = await checkUserStatus();
-      
+
       if (!isSeller && !isAdmin) {
-           console.log("seller data:", sellerData)
-    
-        
+        console.log("seller data:", sellerData);
         router.push('/login');
         return;
       }
 
       setSeller(sellerData);
 
-      // Get platform sales (only if seller exists)
+      // Get platform sales using API route with JWT authentication
       if (sellerData) {
-        const supabase = createClientSideSupabase();
-        const { data: salesData, error: salesError } = await supabase
-          .from('platform_sales')
-          .select('*')
-          .eq('seller_id', sellerData.id)
-          .in('verification_status', ['verified', 'pending'])
-          .order('sale_date', { ascending: false });
+        const res = await fetch('/api/sales', {
+          credentials: 'include',
+        });
 
-        if (salesError) throw salesError;
-        setSales(salesData || []);
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || 'Failed to load earnings data');
+        }
+
+        const data = await res.json();
+        // Filter for verified and pending sales
+        const filteredSales = (data.sales || []).filter((sale: PlatformSale) =>
+          ['verified', 'pending'].includes(sale.verification_status)
+        );
+        setSales(filteredSales);
       }
     } catch (error) {
       console.error('Error loading earnings:', error);
-      setError('Failed to load earnings data');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load earnings data';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

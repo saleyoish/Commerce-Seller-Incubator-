@@ -1,29 +1,25 @@
 // Admin API route for content moderation
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSideSupabase } from '@/lib/supabase-server';
+import { db } from '@/lib/db';
 import { createAdminSupabase } from '@/lib/supabase-admin';
+import { extractToken, verifyJWT } from '@/lib/jwt';
 
 // GET: List clips pending moderation
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
-    const supabase = await createServerSideSupabase();
-    
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    // Verify JWT and admin privileges
+    const token = extractToken(request.headers, request.cookies);
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    // Check if user is admin
-    const { data: admin } = await supabase
+    const payload = await verifyJWT(token);
+    if (!payload) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // Check admin by id (custom auth) or user_id (Supabase auth)
+    const { data: admin } = await db
       .from('admins')
       .select('id')
-      .eq('user_id', user.id)
-      .single();
+      .or(`id.eq.${payload.userId},user_id.eq.${payload.userId}`)
+      .maybeSingle();
 
     if (!admin) {
       return NextResponse.json(
@@ -38,7 +34,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    let query = supabase
+    let query = db
       .from('generated_clips')
       .select(`
         *,
@@ -88,25 +84,21 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 // POST: Batch approve/reject clips
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    const supabase = await createServerSideSupabase();
     const adminSupabase = createAdminSupabase();
     
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    // Verify JWT and admin privileges
+    const token = extractToken(request.headers, request.cookies);
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    // Check if user is admin
-    const { data: admin } = await supabase
+    const payload = await verifyJWT(token);
+    if (!payload) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // Check admin by id (custom auth) or user_id (Supabase auth)
+    const { data: admin } = await db
       .from('admins')
       .select('id')
-      .eq('user_id', user.id)
-      .single();
+      .or(`id.eq.${payload.userId},user_id.eq.${payload.userId}`)
+      .maybeSingle();
 
     if (!admin) {
       return NextResponse.json(
@@ -136,7 +128,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       approved: action === 'approve',
       rejected: action === 'reject',
       rejection_reason: action === 'reject' ? (rejectionReason || 'No reason provided') : null,
-      approved_by: user.id,
+      approved_by: payload.userId,
       approved_at: new Date().toISOString(),
     };
 

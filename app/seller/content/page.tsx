@@ -29,42 +29,28 @@ export default function ContentManagementPage() {
 
   const loadClips = async () => {
     try {
-      const supabase = createClientSideSupabase();
-      
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const res = await fetch('/api/auth/check-user', { credentials: 'include' });
+      if (!res.ok) return;
+      const userData = await res.json();
+      if (!userData.user) return;
 
-      // Get seller ID
-      const { data: seller } = await supabase
+      const { db: dbClient } = await import('@/lib/db');
+
+      const { data: seller } = await dbClient
         .from('sellers')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('user_id', userData.user.id)
         .maybeSingle();
 
-      // Check if user is admin (admins can access without seller record)
-      const { data: adminData } = await supabase
-        .from('admins')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      if (!seller && !userData.isAdmin) return;
 
-      if (!seller && !adminData) return;
-      
       if (seller) {
         setSellerId(seller.id);
-
-        // Get clips with captions
-        const { data: clipsData } = await supabase
+        const { data: clipsData } = await dbClient
           .from('generated_clips')
-          .select(`
-            *,
-            clip_captions(*),
-            stream_recordings(mux_playback_id, source)
-          `)
+          .select('*, clip_captions(*), stream_recordings(mux_playback_id, source)')
           .eq('seller_id', seller.id)
           .order('created_at', { ascending: false });
-
         setClips(clipsData || []);
       }
     } catch (error) {

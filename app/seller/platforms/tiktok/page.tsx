@@ -31,44 +31,31 @@ export default function TikTokSetupPage() {
 
   const loadData = async () => {
     try {
-      const supabase = createClientSideSupabase();
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) { 
-        router.push('/login'); 
-        return; 
-      }
+      const res = await fetch('/api/auth/check-user', { credentials: 'include' });
+      if (!res.ok) { router.push('/login'); return; }
+      const userData = await res.json();
+      if (!userData.user) { router.push('/login'); return; }
 
-      const { data: sellerData } = await supabase
+      const { db: dbClient } = await import('@/lib/db');
+
+      const { data: sellerData } = await dbClient
         .from('sellers')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', userData.user.id)
         .maybeSingle();
-      
-      const { data: adminData } = await supabase
-        .from('admins')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      
-      if (!sellerData && !adminData) {
-        router.push('/signup'); 
-        return; 
-      }
-      
+
+      if (!sellerData && !userData.isAdmin) { router.push('/signup'); return; }
+
       setSeller(sellerData);
 
       if (sellerData) {
-        const { data: connectionData } = await supabase
+        const { data: connectionData } = await dbClient
           .from('platform_connections')
           .select('*')
           .eq('seller_id', sellerData.id)
           .eq('platform', 'tiktok')
           .maybeSingle();
-        
-        if (connectionData) {
-          setConnection(connectionData);
-        }
+        if (connectionData) setConnection(connectionData);
       }
     } catch (error) {
       setError('Failed to load data');

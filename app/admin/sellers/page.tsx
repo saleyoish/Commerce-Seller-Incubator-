@@ -30,13 +30,13 @@ export default function AdminSellersPage() {
 
   const loadSellers = async () => {
     try {
-      const supabase = createClientSideSupabase();
-      const { data, error } = await supabase
-        .from('sellers')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      setSellers(data || []);
+      const response = await fetch('/api/admin/sellers');
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to load sellers');
+      }
+      const data = await response.json();
+      setSellers(data.sellers || []);
     } catch (err: any) {
       setError(err.message);
     } finally {

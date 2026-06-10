@@ -18,12 +18,12 @@ export async function POST(request: Request) {
 
     const supabase = createAdminSupabase();
 
-    // Get Facebook connection
+    // Get Meta connection (check both meta and facebook for backward compatibility)
     const { data: connection, error: connError } = await supabase
       .from('platform_connections')
       .select('*')
       .eq('seller_id', sellerId)
-      .eq('platform', 'facebook')
+      .or('platform.eq.meta,platform.eq.facebook')
       .maybeSingle();
 
     console.log('[Sync Products] Connection query result:', { 
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     if (!connection) {
       console.error('[Sync Products] No connection found for seller:', sellerId);
       return NextResponse.json(
-        { error: 'Facebook connection not found. Please connect your Facebook account first.' },
+        { error: 'Meta connection not found. Please connect your Meta account first.' },
         { status: 404 }
       );
     }
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     if (!accessToken) {
       console.error('[Sync Products] Connection exists but no access token in either field');
       return NextResponse.json(
-        { error: 'Facebook access token missing. Please reconnect your Facebook account.' },
+        { error: 'Meta access token missing. Please reconnect your Meta account.' },
         { status: 400 }
       );
     }
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
       if (message.includes('Missing Permission') || message.includes('#100') || message.includes('Invalid OAuth')) {
         return NextResponse.json(
           { 
-            error: 'Facebook token invalid or expired. Please disconnect and reconnect your Facebook account.',
+            error: 'Meta token invalid or expired. Please disconnect and reconnect your Meta account.',
             syncedCount: 0 
           },
           { status: 403 }
@@ -97,7 +97,7 @@ export async function POST(request: Request) {
       if (message.includes('Missing Permission') || message.includes('#100') || message.includes('Invalid OAuth')) {
         return NextResponse.json(
           { 
-            error: 'Facebook token invalid or expired. Please disconnect and reconnect your Facebook account.',
+            error: 'Meta token invalid or expired. Please disconnect and reconnect your Meta account.',
             syncedCount: 0 
           },
           { status: 403 }
@@ -250,7 +250,7 @@ export async function POST(request: Request) {
       {
         success: true,
         syncedCount: totalProductsSynced,
-        message: `Successfully synced ${totalProductsSynced} products from Facebook`,
+        message: `Successfully synced ${totalProductsSynced} products from Meta Commerce Shop`,
       },
       { status: 200 }
     );

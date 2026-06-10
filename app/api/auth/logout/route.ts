@@ -1,30 +1,15 @@
-import { createClientSideSupabase } from '@/lib/supabase-client';
+// POST /api/auth/logout — Logout endpoint
 import { NextResponse } from 'next/server';
 
 export async function POST() {
-  try {
-    const supabase = createClientSideSupabase();
-    
-    // Sign out the user
-    const { error } = await supabase.auth.signOut();
-    
-    if (error) {
-      console.error('Logout error:', error);
-      return NextResponse.json(
-        { error: 'Failed to logout' },
-        { status: 500 }
-      );
-    }
+  const response = NextResponse.json({ message: 'Logged out successfully' });
+  response.cookies.delete('token');
+  return response;
+}
 
-    // Return success response and redirect to login
-    return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_SITE_URL}/login?loggedOut=true`
-    );
-  } catch (error) {
-    console.error('Logout error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
+export async function GET() {
+  // Support GET for /logout route redirect
+  return NextResponse.redirect(
+    new URL('/login', process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000')
+  );
 }

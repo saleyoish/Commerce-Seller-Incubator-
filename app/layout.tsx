@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ConditionalNavbar } from "@/components/conditional-navbar";
 import { ThemeProvider } from "@/components/theme-provider";
+import { AuthProvider } from '@/context/AuthContext';
 
 const inter = Inter({
   subsets: ["latin"],
@@ -36,9 +37,11 @@ export default function RootLayout({
       </head>
       <body className={`${inter.className} min-h-full flex flex-col`}>
         <ThemeProvider>
-          <ConditionalNavbar>
-            {children}
-          </ConditionalNavbar>
+          <AuthProvider>
+            <ConditionalNavbar>
+              {children}
+            </ConditionalNavbar>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

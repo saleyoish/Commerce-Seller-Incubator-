@@ -17,41 +17,38 @@ export default function StreamSettingsPage() {
 
   const loadSellerData = async () => {
     try {
-      const supabase = createClientSideSupabase();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      
-      if (authError || !user) {
-        setIsLoading(false);
-        return;
-      }
+      const res = await fetch('/api/auth/check-user', { credentials: 'include' });
+      if (!res.ok) { setIsLoading(false); return; }
+      const userData = await res.json();
+      if (!userData.user) { setIsLoading(false); return; }
+
+      const { db: dbClient } = await import('@/lib/db');
 
       let sellerDataList = null;
       let sellerData = null;
 
-      const { data: sellersById } = await supabase
+      const { data: sellersById } = await dbClient
         .from('sellers')
         .select('restream_username, restream_stream_key')
-        .eq('user_id', user.id)
+        .eq('user_id', userData.user.id)
         .order('created_at', { ascending: false });
 
       sellerDataList = sellersById;
 
-      if ((!sellerDataList || sellerDataList.length === 0) && user.email) {
-        const { data: sellersByEmail } = await supabase
+      if ((!sellerDataList || sellerDataList.length === 0) && userData.user.email) {
+        const { data: sellersByEmail } = await dbClient
           .from('sellers')
           .select('restream_username, restream_stream_key')
-          .eq('email', user.email)
+          .eq('email', userData.user.email)
           .order('created_at', { ascending: false });
         sellerDataList = sellersByEmail;
       }
 
       if (sellerDataList && sellerDataList.length > 0) {
-        sellerData = sellerDataList.find(s => s.restream_stream_key && 
+        sellerData = sellerDataList.find((s: any) => s.restream_stream_key && 
                                            s.restream_stream_key !== 'NOT_CONFIGURED' && 
                                            s.restream_stream_key.length > 10);
-        if (!sellerData) {
-          sellerData = sellerDataList[0];
-        }
+        if (!sellerData) sellerData = sellerDataList[0];
       }
 
       setSeller(sellerData);

@@ -47,62 +47,71 @@ export function useStreamStatus(sellerId: string) {
 
     loadCurrentStream();
 
-    // Set up real-time subscription
-    const channel = supabase
-      .channel('stream_status_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'stream_sessions',
-          filter: `seller_id=eq.${sellerId}`,
-        },
-        (payload) => {
-          console.log('Stream status updated:', payload);
-          
-          if (payload.new && mounted) {
-            const updatedStream = payload.new as StreamSession;
+    // Set up real-time subscription (optional - may fail with custom auth)
+    let channel: any = null;
+    try {
+      channel = supabase
+        .channel('stream_status_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'stream_sessions',
+            filter: `seller_id=eq.${sellerId}`,
+          },
+          (payload) => {
+            console.log('Stream status updated:', payload);
             
-            // Only update if it's a relevant status change
-            if (['pending', 'live', 'ended', 'error'].includes(updatedStream.status)) {
-              setStreamStatus(updatedStream);
+            if (payload.new && mounted) {
+              const updatedStream = payload.new as StreamSession;
               
-              // If stream ended, clear after delay
-              if (updatedStream.status === 'ended') {
-                setTimeout(() => {
-                  if (mounted) {
-                    setStreamStatus(null);
-                  }
-                }, 5000);
-              }
-              
-              // If stream went to error, clear after longer delay
-              if (updatedStream.status === 'error') {
-                setTimeout(() => {
-                  if (mounted) {
-                    setStreamStatus(null);
-                  }
-                }, 10000);
+              // Only update if it's a relevant status change
+              if (['pending', 'live', 'ended', 'error'].includes(updatedStream.status)) {
+                setStreamStatus(updatedStream);
+                
+                // If stream ended, clear after delay
+                if (updatedStream.status === 'ended') {
+                  setTimeout(() => {
+                    if (mounted) {
+                      setStreamStatus(null);
+                    }
+                  }, 5000);
+                }
+                
+                // If stream went to error, clear after longer delay
+                if (updatedStream.status === 'error') {
+                  setTimeout(() => {
+                    if (mounted) {
+                      setStreamStatus(null);
+                    }
+                  }, 10000);
+                }
               }
             }
           }
-        }
-      )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('Subscribed to stream status updates');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('Failed to subscribe to stream status');
-          if (mounted) {
-            setError('Failed to subscribe to real-time updates');
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            console.log('Subscribed to stream status updates');
+          } else if (status === 'CHANNEL_ERROR') {
+            console.warn('Realtime subscription failed (expected with custom auth)');
+            if (mounted) {
+              setError('Failed to subscribe to real-time updates');
+            }
+          } else if (status === 'TIMED_OUT') {
+            console.warn('Realtime subscription timed out');
           }
-        }
-      });
+        });
+    } catch (error) {
+      console.warn('Failed to setup realtime subscription:', error);
+    }
 
     return () => {
       mounted = false;
-      supabase.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
   }, [sellerId]);
 

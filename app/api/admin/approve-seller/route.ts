@@ -1,28 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSideSupabase } from '@/lib/supabase-server';
-import { createAdminSupabase } from '@/lib/supabase-admin';
+import { db } from '@/lib/db';
 import { generatePassword, sendApprovalEmailToSeller, sendReferralApprovalEmailToSeller } from '@/lib/gmail';
+import { hashPassword } from '@/lib/password';
+import { extractToken, verifyJWT } from '@/lib/jwt';
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerSideSupabase();
-    const adminSupabase = createAdminSupabase(); // For auth admin operations
-    
-    // Check if user is admin
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // Verify JWT and admin privileges
+    const token = extractToken(request.headers, request.cookies);
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { data: admin } = await supabase
+    const payload = await verifyJWT(token);
+    if (!payload) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // Check admin by id (custom auth) or user_id (Supabase auth)
+    const { data: admin } = await db
       .from('admins')
       .select('id')
-      .eq('user_id', session.user.id)
-      .single();
+      .or(`id.eq.${payload.userId},user_id.eq.${payload.userId}`)
+      .maybeSingle();
 
-    if (!admin) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
-    }
+    if (!admin) return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
 
     const { sellerId, approve } = await request.json();
 
@@ -31,89 +29,64 @@ export async function POST(request: NextRequest) {
     }
 
     // Get seller info
-    const { data: seller } = await supabase
-      .from('sellers')
-      .select('*')
-      .eq('id', sellerId)
-      .single();
+    const { data: seller } = await db.from('sellers').select('*').eq('id', sellerId).maybeSingle();
 
     if (!seller) {
       return NextResponse.json({ error: 'Seller not found' }, { status: 404 });
     }
 
-    // Update seller status
-    const { error: updateError } = await supabase
+    // Update seller approval status
+    const { error: updateError } = await db
       .from('sellers')
-      .update({ approval_status: approve ? 'approved' : 'rejected' })
+      .update({ approval_status: approve ? 'approved' : 'rejected', updated_at: new Date().toISOString() })
       .eq('id', sellerId);
 
-    if (updateError) {
-      throw updateError;
-    }
+    if (updateError) throw updateError;
 
-    // If approving, generate password and send credentials email
+    // If approving, generate password, hash it, store and email credentials
     if (approve) {
       try {
-        // Generate new password
         const password = generatePassword();
-        
-        // Update user password in auth
-        const { data: sellerUser } = await supabase
-          .from('sellers')
-          .select('user_id')
-          .eq('id', sellerId)
-          .single();
-          
-        if (sellerUser?.user_id) {
-          await adminSupabase.auth.admin.updateUserById(sellerUser.user_id, { password });
-          console.log('Password updated for seller:', seller.email);
-        }
-        
+        const passwordHash = await hashPassword(password);
+
+        await db.from('sellers').update({
+          password_hash: passwordHash,
+          is_temp_password: true,
+          approval_status: 'approved',
+          updated_at: new Date().toISOString(),
+        }).eq('id', sellerId);
+
         // Send approval email with credentials via Gmail
         await sendApprovalEmailToSeller(
           seller.email,
-          seller.email.split('@')[0], // Use part before @ as name
+          seller.name || seller.email.split('@')[0],
           seller.email,
           password
         );
-        console.log('Approval email with credentials sent to:', seller.email);
 
-        // Check if this seller was referred and notify referrer
+        // Notify referrer if exists
         try {
-          console.log('Checking for referral for seller ID:', sellerId);
-          const { data: referral } = await supabase
+          const { data: referral } = await db
             .from('referrals')
-            .select('referrer_id, referrer_email')
+            .select('referrer_id')
             .eq('referred_id', sellerId)
             .maybeSingle();
 
-          console.log('Referral data found:', referral);
-
-          if (referral && referral.referrer_id) {
-            console.log('Found referrer ID:', referral.referrer_id);
-            // Get referrer details
-            const { data: referrer } = await supabase
+          if (referral?.referrer_id) {
+            const { data: referrer } = await db
               .from('sellers')
               .select('email')
               .eq('id', referral.referrer_id)
-              .single();
-
-            console.log('Referrer details:', referrer);
+              .maybeSingle();
 
             if (referrer?.email) {
-              console.log('Sending referral approval email to:', referrer.email);
-              const emailResult = await sendReferralApprovalEmailToSeller(
+              await sendReferralApprovalEmailToSeller(
                 referrer.email,
-                seller.email.split('@')[0], // Referred seller name
+                seller.name || seller.email.split('@')[0],
                 seller.email,
-                50 // Bonus amount
+                50
               );
-              console.log('Referral email result:', emailResult);
-            } else {
-              console.log('Referrer email not found for ID:', referral.referrer_id);
             }
-          } else {
-            console.log('No referral found for seller:', sellerId);
           }
         } catch (referralError) {
           console.error('Error processing referral notification:', referralError);

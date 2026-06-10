@@ -18,12 +18,12 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       return NextResponse.redirect(
-        `${BASE_URL}/seller/platforms/facebook?error=${encodeURIComponent(errorDescription || error)}`
+        `${BASE_URL}/seller/platforms/meta-commerce-shop?error=${encodeURIComponent(errorDescription || error)}`
       );
     }
 
     if (!code) {
-      return NextResponse.redirect(`${BASE_URL}/seller/platforms/facebook?error=No authorization code received`);
+      return NextResponse.redirect(`${BASE_URL}/seller/platforms/meta-commerce-shop?error=No authorization code received`);
     }
 
     // Exchange code for short-lived token
@@ -96,17 +96,26 @@ export async function GET(request: NextRequest) {
     const facebookUserId = userData.id || null;
     const facebookUserName = userData.name || null;
 
-    // Check if connection already exists
-    const { data: existingConnection } = await adminSupabase
+    // Check if connection already exists (check both meta and facebook for migration)
+    const { data: existingMetaConnection } = await adminSupabase
+      .from('platform_connections')
+      .select('*')
+      .eq('seller_id', sellerData.id)
+      .eq('platform', 'meta')
+      .maybeSingle();
+
+    const { data: existingFacebookConnection } = await adminSupabase
       .from('platform_connections')
       .select('*')
       .eq('seller_id', sellerData.id)
       .eq('platform', 'facebook')
       .maybeSingle();
 
+    const existingConnection = existingMetaConnection || existingFacebookConnection;
+
     const connectionRecord = {
       seller_id: sellerData.id,
-      platform: 'facebook',
+      platform: 'meta',
       status: 'connected',
       platform_username: facebookUserName,
       platform_user_id: facebookUserId,
@@ -120,11 +129,22 @@ export async function GET(request: NextRequest) {
     };
 
     let result;
-    if (existingConnection) {
+    if (existingMetaConnection) {
       result = await adminSupabase
         .from('platform_connections')
         .update(connectionRecord)
-        .eq('id', existingConnection.id)
+        .eq('id', existingMetaConnection.id)
+        .select()
+        .single();
+    } else if (existingFacebookConnection) {
+      // Migrate facebook connection to meta
+      await adminSupabase
+        .from('platform_connections')
+        .delete()
+        .eq('id', existingFacebookConnection.id);
+      result = await adminSupabase
+        .from('platform_connections')
+        .insert(connectionRecord)
         .select()
         .single();
     } else {
@@ -136,21 +156,21 @@ export async function GET(request: NextRequest) {
     }
 
     if (result.error) {
-      console.error('Error saving Facebook connection:', result.error);
+      console.error('Error saving Meta connection:', result.error);
       return NextResponse.redirect(
-        `${BASE_URL}/seller/platforms/facebook?error=${encodeURIComponent('Failed to save connection')}`
+        `${BASE_URL}/seller/platforms/meta-commerce-shop?error=${encodeURIComponent('Failed to save connection')}`
       );
     }
 
     // Redirect back with success message
     return NextResponse.redirect(
-      `${BASE_URL}/seller/platforms/facebook?success=Facebook connected successfully!&autoSync=true`
+      `${BASE_URL}/seller/platforms/meta-commerce-shop?success=Meta connected successfully!&autoSync=true`
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : 'OAuth callback failed';
     console.error('Facebook OAuth callback error:', error);
     return NextResponse.redirect(
-      `${BASE_URL}/seller/platforms/facebook?error=${encodeURIComponent(message)}`
+      `${BASE_URL}/seller/platforms/meta-commerce-shop?error=${encodeURIComponent(message)}`
     );
   }
 }

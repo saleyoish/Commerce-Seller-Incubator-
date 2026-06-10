@@ -81,44 +81,30 @@ export default function AddManualSalePage() {
 
   const loadData = async () => {
     try {
-      const supabase = createClientSideSupabase();
+      const res = await fetch('/api/auth/check-user', { credentials: 'include' });
+      if (!res.ok) { router.push('/login'); return; }
+      const userData = await res.json();
+      if (!userData.user) { router.push('/login'); return; }
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push('/login');
-        return;
-      }
-
-      const { data: sellerData } = await supabase
+      const { data: sellerData } = await (await import('@/lib/db')).db
         .from('sellers')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', userData.user.id)
         .maybeSingle();
 
-      // Check if user is admin (admins can access without seller record)
-      const { data: adminData } = await supabase
-        .from('admins')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (!sellerData && !adminData) {
-
-      
+      if (!sellerData && !userData.isAdmin) {
         router.push('/signup');
         return;
       }
 
       setSeller(sellerData);
 
-      // Get products (only if seller exists)
       if (sellerData) {
-        const { data: productsData } = await supabase
+        const { data: productsData } = await (await import('@/lib/db')).db
           .from('products')
           .select('*')
           .eq('seller_id', sellerData.id)
           .eq('status', 'active');
-
         setProducts(productsData || []);
       }
     } catch (error) {

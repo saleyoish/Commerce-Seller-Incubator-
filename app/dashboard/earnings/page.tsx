@@ -3,7 +3,8 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { createClientSideSupabase, type PlatformSale, type Seller } from '@/lib/supabase-client';
+import { type PlatformSale, type Seller } from '@/lib/supabase-client';
+import { checkUserStatus } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -68,19 +69,13 @@ export default function EarningsPage() {
 
   const loadEarningsData = async () => {
     try {
-      const supabase = createClientSideSupabase();
+      // Use custom JWT auth instead of Supabase Auth
+      const { isSeller, isAdmin, seller: sellerData } = await checkUserStatus();
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      if (!isSeller && !isAdmin) {
         router.push('/login');
         return;
       }
-
-      const { data: sellerData } = await supabase
-        .from('sellers')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
 
       if (!sellerData) {
         router.push('/signup');
@@ -89,19 +84,24 @@ export default function EarningsPage() {
 
       setSeller(sellerData);
 
-      // Get platform sales
-      const { data: salesData, error: salesError } = await supabase
-        .from('platform_sales')
-        .select('*')
-        .eq('seller_id', sellerData.id)
-        .eq('verification_status', 'verified')
-        .order('sale_date', { ascending: false });
+      // Use API route with JWT authentication instead of direct Supabase
+      const res = await fetch('/api/sales', {
+        credentials: 'include',
+      });
 
-      if (salesError) throw salesError;
-      setSales(salesData || []);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to load earnings data');
+      }
+
+      const data = await res.json();
+      // Filter only verified sales for earnings
+      const verifiedSales = (data.sales || []).filter((sale: PlatformSale) => sale.verification_status === 'verified');
+      setSales(verifiedSales);
     } catch (error) {
       console.error('Error loading earnings:', error);
-      setError('Failed to load earnings data');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load earnings data';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

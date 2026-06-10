@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminSupabase } from '@/lib/supabase-admin';
+import { db } from '@/lib/db';
+import { hashPassword } from '@/lib/password';
+import { v4 as uuidv4 } from 'uuid';
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,68 +25,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = createAdminSupabase();
-
-    // 1. Check if user already exists in auth
-    const { data: existingUsers } = await supabase.auth.admin.listUsers();
-    let userId: string | null = null;
-    let userExists = false;
-
-    const existingUser = existingUsers?.users.find((u: any) => u.email === email);
-
-    if (existingUser) {
-      userId = existingUser.id;
-      userExists = true;
-    } else {
-      // 2. Create auth user
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-      });
-
-      if (authError) {
-        return NextResponse.json(
-          { error: authError.message },
-          { status: 400 }
-        );
-      }
-
-      userId = authData.user!.id;
-    }
-
-    // 3. Check if already an admin
-    const { data: existingAdmin } = await supabase
+    // Create admin in application DB (DB-only auth)
+    // Check if already an admin by email
+    const { data: existingAdmin } = await db
       .from('admins')
-      .select('id')
-      .eq('email', email)
+      .select('id, user_id, email')
+      .eq('email', email.toLowerCase().trim())
       .maybeSingle();
 
     if (existingAdmin) {
       return NextResponse.json({
         success: true,
         message: 'User is already an admin',
-        userId,
-        email,
+        userId: existingAdmin.user_id,
+        email: existingAdmin.email,
       });
     }
 
-    // 4. Insert into admins table
-    const { error: adminError } = await supabase.from('admins').insert({
+    // Hash password and create admin record with generated UUID
+    const passwordHash = await hashPassword(password);
+    const userId = uuidv4();
+
+    const { error: insertError } = await db.from('admins').insert({
       user_id: userId,
-      email,
+      email: email.toLowerCase().trim(),
+      password_hash: passwordHash,
+      created_at: new Date().toISOString(),
     });
 
-    if (adminError) {
-      return NextResponse.json(
-        { error: adminError.message },
-        { status: 500 }
-      );
+    if (insertError) {
+      return NextResponse.json({ error: insertError.message }, { status: 500 });
     }
 
     return NextResponse.json({
       success: true,
-      message: userExists ? 'Existing user promoted to admin' : 'Admin created successfully',
+      message: 'Admin created successfully',
       userId,
       email,
     });

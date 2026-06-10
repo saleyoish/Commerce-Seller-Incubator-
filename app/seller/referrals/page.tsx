@@ -55,71 +55,40 @@ export default function ReferralsPage() {
   const loadReferralData = async () => {
     setError(null);
     try {
-      const supabase = createClientSideSupabase();
+      const res = await fetch('/api/seller/referrals', { credentials: 'include' });
       
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        console.error('API Error:', errorData);
+        
+        if (res.status === 401) {
+          setError('Please log in to view your referrals');
+          // Don't auto-redirect, let user see the error
+          return;
+        }
+        throw new Error(errorData.error || 'Failed to load referral data');
+      }
+
+      const data = await res.json();
       
-      if (!user) {
-        console.log("No user found, redirecting to login");
-        window.location.href = '/login';
-        return;
-      }
-      console.log("Current user:", user.id);
-
-      // Get seller record with referral code
-      const { data: sellerData, error: sellerError } = await supabase
-        .from("sellers")
-        .select("id, referral_code")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (sellerError) {
-        console.error("Error fetching seller:", sellerError);
-      }
-      console.log("Seller data:", sellerData);
-
-      if (!sellerData) {
-        window.location.href = '/signup';
+      if (!data.seller) {
+        setError('Seller account not found');
         return;
       }
 
-      setSeller(sellerData);
-
-      // Get referral stats
-      console.log("Fetching referrals for seller_id:", sellerData.id);
-      const { data: referralsData, error: referralsError } = await supabase
-        .from("referrals")
-        .select("*")
-        .eq("referrer_id", sellerData.id)
-        .order("created_at", { ascending: false });
-
-      if (referralsError) {
-        console.error("Error fetching referrals:", referralsError);
-        alert("Error loading referrals: " + referralsError.message);
-      }
-      console.log("Referrals data:", referralsData);
-      console.log("Referrals count:", referralsData?.length || 0);
-
-      const referralsList = referralsData || [];
+      setSeller(data.seller);
+      
+      const referralsList = data.referrals || [];
       setReferrals(referralsList);
 
-      // Calculate stats
-      const calculatedStats = {
+      setStats({
         total: referralsList.length,
-        approved: referralsList.filter((r) => r.status === "approved").length,
-        active: referralsList.filter((r) => r.status === "active").length,
-        paid: referralsList.filter((r) => r.paid).length,
-        totalEarnings: referralsList
-          .filter((r) => r.paid)
-          .reduce((sum, r) => sum + (r.bonus_amount || 0), 0),
-        // Count both approved and active as pending (since they haven't been paid yet)
-        pendingEarnings: referralsList
-          .filter((r) => !r.paid && (r.status === "active" || r.status === "approved"))
-          .reduce((sum, r) => sum + (r.bonus_amount || 0), 0),
-      };
-      console.log("Calculated stats:", calculatedStats);
-      setStats(calculatedStats);
+        approved: referralsList.filter((r: any) => r.status === "approved").length,
+        active: referralsList.filter((r: any) => r.status === "active").length,
+        paid: referralsList.filter((r: any) => r.paid).length,
+        totalEarnings: referralsList.filter((r: any) => r.paid).reduce((sum: number, r: any) => sum + (r.bonus_amount || 0), 0),
+        pendingEarnings: referralsList.filter((r: any) => !r.paid && (r.status === "active" || r.status === "approved")).reduce((sum: number, r: any) => sum + (r.bonus_amount || 0), 0),
+      });
     } catch (err) {
       console.error("Error loading referral data:", err);
       setError((err as Error).message);

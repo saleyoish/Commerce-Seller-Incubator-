@@ -1,66 +1,32 @@
-// API route to check if current user is seller or admin
+// GET /api/auth/check-user — Check if current user is seller or admin
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-if (!supabaseUrl || !supabasePublishableKey) {
-  throw new Error('Missing Supabase environment variables');
-}
+import { verifyJWT, extractToken } from '@/lib/jwt';
+import { db } from '@/lib/db';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
-    // Create Supabase client for API route with proper cookie handling
-    const supabase = createServerClient(supabaseUrl!, supabasePublishableKey!, {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet: any) {
-          // Cookies are read-only in API routes
-        },
-      },
-      global: {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        }
-      }
-    });
+    const token = extractToken(request.headers, request.cookies);
+    if (!token) {
+      return NextResponse.json(
+        { error: 'No authenticated user', isSeller: false, isAdmin: false, user: null },
+        { status: 401 }
+      );
+    }
 
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const payload = await verifyJWT(token);
+    if (!payload) {
+      return NextResponse.json(
+        { error: 'Invalid token', isSeller: false, isAdmin: false, user: null },
+        { status: 401 }
+      );
+    }
 
-  console.log(`[CHECK-USER-API] User: ${user?.id || 'NONE'} | Token Error: ${authError?.message || 'OK'}`);
+    const [{ data: sellerData, error: sellerError }, { data: adminData, error: adminError }] =
+      await Promise.all([
+        db.from('sellers').select('*').eq('id', payload.userId).maybeSingle(),
+        db.from('admins').select('id').eq('id', payload.userId).maybeSingle(),
+      ]);
 
-  if (authError) {
-    console.error(`[CHECK-USER-API] Auth error:`, authError);
-  }
-
-  if (!user) {
-    return NextResponse.json(
-      { error: 'No authenticated user', isSeller: false, isAdmin: false, user: null },
-      { status: 401 }
-    );
-  }
-
-    // Use regular client with user's auth to query (RLS will apply)
-    // Check if user is seller
-    const { data: sellerData, error: sellerError } = await supabase
-      .from('sellers')
-      .select('*')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    // Check if user is admin
-    const { data: adminData, error: adminError } = await supabase
-      .from('admins')
-      .select('id')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    // Log any errors for debugging
     if (sellerError) console.error('Seller query error:', sellerError);
     if (adminError) console.error('Admin query error:', adminError);
 
@@ -68,7 +34,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       isSeller: !!sellerData,
       isAdmin: !!adminData,
       seller: sellerData,
-      user: { id: user.id, email: user.email }
+      user: { id: payload.userId, email: payload.email },
     });
   } catch (error) {
     console.error('Error checking user status:', error);

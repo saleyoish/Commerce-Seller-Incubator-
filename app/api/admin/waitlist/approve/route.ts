@@ -1,16 +1,10 @@
-import { createAdminSupabase } from "@/lib/supabase-admin";
+import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
-import {
-  generatePassword,
-  sendApprovalEmailToSeller,
-} from "@/lib/gmail";
+import { hashPassword, generateTempPassword } from "@/lib/password";
+import { v4 as uuidv4 } from "uuid";
 
 export async function POST(request: Request) {
   try {
-    console.log("=== APPROVAL API STARTED ===");
-    console.log("Gmail user:", process.env.GMAIL_USER ? "Set" : "NOT SET");
-    console.log("Gmail app password:", process.env.GMAIL_APP_PASSWORD ? "Set" : "NOT SET");
-    
     const formData = await request.formData();
     const id = formData.get("id") as string;
 
@@ -21,10 +15,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabase = createAdminSupabase();
-
-    // Get waitlist entry
-    const { data: waitlistEntry, error: fetchError } = await supabase
+    const { data: waitlistEntry, error: fetchError } = await db
       .from("waitlist")
       .select("*")
       .eq("id", id)
@@ -37,115 +28,74 @@ export async function POST(request: Request) {
       );
     }
 
-    // Update waitlist status to approved
-    const { error: updateError } = await supabase
-      .from("waitlist")
-      .update({ status: "approved", updated_at: new Date().toISOString() })
-      .eq("id", id);
+    const password = generateTempPassword();
+    const passwordHash = await hashPassword(password);
+    let userId = waitlistEntry.user_id || uuidv4();
 
-    if (updateError) {
-      return NextResponse.json(
-        { error: "Failed to update waitlist entry" },
-        { status: 500 }
-      );
-    }
+    const { data: existingSellerById } = await db
+      .from("sellers")
+      .select("id, user_id, email")
+      .eq("user_id", userId)
+      .maybeSingle();
 
-    // Get the user_id from waitlist entry if exists, or find/create user
-    let userId = waitlistEntry.user_id;
-    let password: string | undefined;
-    
-    console.log("Waitlist entry user_id:", userId);
+    let sellerExists = !!existingSellerById;
 
-    if (!userId) {
-      console.log("No user_id in waitlist, checking if auth user exists...");
-      // Check if auth user exists
-      const { data: users } = await supabase.auth.admin.listUsers();
-      const existingUser = users?.users.find((u: any) => u.email === waitlistEntry.email);
-
-      if (existingUser) {
-        console.log("Found existing auth user:", existingUser.id);
-        userId = existingUser.id;
-        // Update waitlist with user_id for future
-        await supabase.from("waitlist").update({ user_id: userId }).eq("id", id);
-      } else {
-        console.log("No existing auth user found, creating new user...");
-        // Create new auth user with auto-generated password
-        password = generatePassword();
-        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-          email: waitlistEntry.email,
-          password,
-          email_confirm: true,
-        });
-
-        if (!authError && authData.user) {
-          userId = authData.user.id;
-          console.log("New auth user created:", userId);
-          // Update waitlist with user_id
-          await supabase.from("waitlist").update({ user_id: userId }).eq("id", id);
-        } else {
-          console.error("Failed to create auth user:", authError);
-        }
-      }
-    } else {
-      console.log("Using existing user_id from waitlist:", userId);
-    }
-
-    // Update seller approval status if seller record exists
-    if (userId) {
-      const { data: seller } = await supabase
+    if (!sellerExists) {
+      const { data: existingSellerByEmail } = await db
         .from("sellers")
-        .select("id")
-        .eq("user_id", userId)
+        .select("id, user_id")
+        .eq("email", waitlistEntry.email)
         .maybeSingle();
 
-      if (seller) {
-        await supabase
-          .from("sellers")
-          .update({ approval_status: "approved" })
-          .eq("user_id", userId);
-      } else {
-        // Create seller record with approved status
-        await supabase.from("sellers").insert({
-          user_id: userId,
-          email: waitlistEntry.email,
-          phone: waitlistEntry.phone,
-          approval_status: "approved",
-          stripe_onboarding_status: "pending",
-        });
+      if (existingSellerByEmail?.user_id) {
+        userId = existingSellerByEmail.user_id;
+        sellerExists = true;
       }
+    }
 
-      // If we don't have a password yet (user existed before), generate a new one
-      if (!password) {
-        password = generatePassword();
-        console.log("Generated new password for existing user");
-      }
-      
-      // Update user password
-      const { error: passwordUpdateError } = await supabase.auth.admin.updateUserById(userId, { password });
-      if (passwordUpdateError) {
-        console.error("Failed to update user password:", passwordUpdateError);
-      } else {
-        console.log("User password updated successfully for:", waitlistEntry.email);
-      }
+    const sellerPayload: Record<string, any> = {
+      user_id: userId,
+      email: waitlistEntry.email,
+      phone: waitlistEntry.phone,
+      approval_status: "approved",
+      stripe_onboarding_status: "pending",
+      password_hash: passwordHash,
+      is_temp_password: true,
+      updated_at: new Date().toISOString(),
+      name: waitlistEntry.name || null,
+    };
 
-      // Send approval email with credentials to seller via Gmail
-      try {
-        console.log("Sending approval email to:", waitlistEntry.email);
-        console.log("Password length:", password?.length);
-        const result = await sendApprovalEmailToSeller(
-          waitlistEntry.email,
-          waitlistEntry.name,
-          waitlistEntry.email,
-          password
-        );
-        console.log("Email send result:", result);
-      } catch (e: any) {
-        console.error("Failed to send approval email:", e);
-        console.error("Error message:", e?.message);
-        console.error("Error stack:", e?.stack);
-      }
+    if (sellerExists) {
+      await db.from("sellers").update(sellerPayload).eq("user_id", userId);
     } else {
-      console.warn("No userId found, cannot send approval email or update password");
+      await db.from("sellers").insert(sellerPayload);
+    }
+
+    await db
+      .from("waitlist")
+      .update({
+        status: "approved",
+        updated_at: new Date().toISOString(),
+        user_id: userId,
+      })
+      .eq("id", id);
+
+    try {
+      await fetch(
+        `${process.env.NEXT_PUBLIC_SITE_URL}/api/email/waitlist-approved`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: waitlistEntry.email,
+            name: waitlistEntry.name || waitlistEntry.email,
+            email: waitlistEntry.email,
+            password,
+          }),
+        }
+      );
+    } catch (e: any) {
+      console.error("Failed to send approval email:", e);
     }
 
     return NextResponse.redirect(

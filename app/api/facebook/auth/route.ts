@@ -25,6 +25,7 @@ export async function POST() {
     authUrl.searchParams.set('redirect_uri', REDIRECT_URI);
     authUrl.searchParams.set('scope', SCOPES);
     authUrl.searchParams.set('response_type', 'code');
+    authUrl.searchParams.set('auth_type', 'rerequest');
     authUrl.searchParams.set('state', Buffer.from(JSON.stringify({ timestamp: Date.now() })).toString('base64'));
 
     return NextResponse.json(

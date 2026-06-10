@@ -1,24 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSideSupabase } from '@/lib/supabase-server';
+import { db } from '@/lib/db';
 import { createTransfer } from '@/lib/stripe';
 import { sendPayoutNotification } from '@/lib/resend';
 import { PLATFORM_CONFIG } from '@/lib/config';
+import { extractToken, verifyJWT } from '@/lib/jwt';
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerSideSupabase();
-    
-    // Check if user is admin
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // Verify JWT and admin privileges
+    const token = extractToken(request.headers, request.cookies);
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { data: admin } = await supabase
+    const payload = await verifyJWT(token);
+    if (!payload) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // Check admin by id (custom auth) or user_id (Supabase auth)
+    const { data: admin } = await db
       .from('admins')
       .select('id')
-      .eq('user_id', session.user.id)
-      .single();
+      .or(`id.eq.${payload.userId},user_id.eq.${payload.userId}`)
+      .maybeSingle();
 
     if (!admin) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
@@ -39,11 +40,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Get seller info
-    const { data: seller } = await supabase
+    const { data: seller } = await db
       .from('sellers')
       .select('*')
       .eq('id', sellerId)
-      .single();
+      .maybeSingle();
 
     if (!seller) {
       return NextResponse.json({ error: 'Seller not found' }, { status: 404 });

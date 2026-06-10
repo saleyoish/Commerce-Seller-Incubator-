@@ -1,109 +1,85 @@
+// POST /api/auth/signup — This route is no longer used for authentication.
+// Sellers apply via /api/waitlist-signup and get credentials from admin approval.
+// This endpoint is kept for backwards compatibility but redirects to waitlist.
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminSupabase } from '@/lib/supabase-admin';
+import { db } from '@/lib/db';
+import { hashPassword } from '@/lib/password';
 import { sendAdminNewSellerNotification } from '@/lib/resend';
+import { v4 as uuidv4 } from 'uuid';
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password, phone } = await request.json();
+    const { email, password, phone, name } = await request.json();
 
-    if (!email || !password || !phone) {
+    if (!email || !phone) {
       return NextResponse.json(
-        { error: 'Email, password, and phone are required' },
+        { error: 'Email and phone are required' },
         { status: 400 }
       );
     }
 
-    const supabase = createAdminSupabase();
+    const normalizedEmail = email.toLowerCase().trim();
 
-    // 1. Try to create auth user (may already exist from previous attempt)
-    let userId: string;
-    let userExists = false;
+    // Check if seller already exists
+    const { data: existing } = await db
+      .from('sellers')
+      .select('id, user_id, approval_status')
+      .eq('email', normalizedEmail)
+      .maybeSingle();
 
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true, // Auto-confirm for now
-    });
-
-    if (authError) {
-      // Check if error is "User already exists"
-      if (authError.message?.includes('already') || authError.message?.includes('exist')) {
-        userExists = true;
-        // Get existing user by email
-        const { data: users, error: listError } = await supabase.auth.admin.listUsers();
-        if (listError || !users) {
-          return NextResponse.json(
-            { error: 'Failed to find existing user' },
-            { status: 500 }
-          );
-        }
-        const existingUser = users.users.find((u: any) => u.email === email);
-        if (!existingUser) {
-          return NextResponse.json(
-            { error: 'User not found' },
-            { status: 404 }
-          );
-        }
-        userId = existingUser.id;
-      } else {
-        return NextResponse.json(
-          { error: authError.message },
-          { status: 400 }
-        );
-      }
-    } else {
-      userId = authData.user!.id;
+    if (existing) {
+      return NextResponse.json(
+        { error: 'An account with this email already exists', existing: true },
+        { status: 409 }
+      );
     }
 
-    // 2. Check if seller record already exists - handle duplicates
-    const { data: sellers } = await supabase
-      .from('sellers')
-      .select('id')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(1);
-    
-    const existingSeller = sellers && sellers.length > 0 ? sellers[0] : null;
+    // Generate a user_id (UUID) for this new seller
+    const userId = uuidv4();
 
-    if (!existingSeller) {
-      // Create seller record using admin client (bypasses RLS)
-      const { error: sellerError } = await supabase.from('sellers').insert({
+    // Hash password if provided, otherwise no password yet (pending approval)
+    const passwordHash = password ? await hashPassword(password) : null;
+
+    // Create seller record
+    const { data: seller, error: sellerError } = await db
+      .from('sellers')
+      .insert({
         user_id: userId,
-        email,
+        email: normalizedEmail,
         phone,
+        name: name || null,
         approval_status: 'pending',
         stripe_onboarding_status: 'pending',
-      });
+        password_hash: passwordHash,
+        is_temp_password: false,
+      })
+      .select('id, user_id, email')
+      .single();
 
-      if (sellerError) {
-        // Only rollback if we just created the user
-        if (!userExists) {
-          await supabase.auth.admin.deleteUser(userId);
-        }
-        return NextResponse.json(
-          { error: sellerError.message },
-          { status: 500 }
-        );
-      }
+    if (sellerError) {
+      console.error('Signup error:', sellerError);
+      return NextResponse.json(
+        { error: sellerError.message || 'Failed to create account' },
+        { status: 500 }
+      );
     }
 
-    // Send notification to all admins about new seller
+    // Notify admins
     try {
-      const { data: admins } = await supabase.from('admins').select('email');
+      const { data: admins } = await db.from('admins').select('email');
       if (admins && admins.length > 0) {
         for (const admin of admins) {
-          await sendAdminNewSellerNotification(admin.email, email, phone);
+          await sendAdminNewSellerNotification(admin.email, normalizedEmail, phone);
         }
       }
     } catch (emailError) {
       console.error('Failed to send admin notification:', emailError);
-      // Don't fail the signup if email fails
     }
 
     return NextResponse.json({
       success: true,
-      userId: userId,
-      message: userExists ? 'Account recovered and seller record created' : 'Account created successfully',
+      userId: seller.user_id,
+      message: 'Account created successfully. Awaiting admin approval.',
     });
   } catch (error: any) {
     console.error('Signup error:', error);

@@ -5,7 +5,6 @@ import { useRouter, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Home, LayoutDashboard, Menu, X, User, Play, Sun, Moon } from "lucide-react";
 import { useState, useEffect } from 'react';
-import { createClientSideSupabase } from '@/lib/supabase-client';
 import { useTheme } from '@/components/theme-provider';
 
 export default function Navbar() {
@@ -17,43 +16,38 @@ export default function Navbar() {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const supabase = createClientSideSupabase();
-    
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setIsLoggedIn(!!session);
-      
-      if (session) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', session.user.id)
-          .single();
-        setIsAdmin(data?.role === 'admin');
+      try {
+        const res = await fetch('/api/auth/me', { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          setIsLoggedIn(true);
+          setIsAdmin(data.isAdmin ?? false);
+        } else {
+          setIsLoggedIn(false);
+          setIsAdmin(false);
+        }
+      } catch {
+        setIsLoggedIn(false);
       }
     };
     checkAuth();
-    
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsLoggedIn(!!session);
-    });
-    
-    return () => subscription.unsubscribe();
   }, []);
-  
-  const isAdminPage = pathname?.startsWith('/admin');
+
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    setIsLoggedIn(false);
+    setIsAdmin(false);
+    router.push('/');
+  };
 
   const scrollToSection = (e: React.MouseEvent<HTMLAnchorElement>, sectionId: string) => {
     e.preventDefault();
     const element = document.getElementById(sectionId);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-    }
+    if (element) element.scrollIntoView({ behavior: 'smooth' });
   };
 
-  if (pathname && pathname.startsWith('/admin')) {
-    return null;
-  }
+  if (pathname && pathname.startsWith('/admin')) return null;
 
   return (
     <nav className="bg-[var(--bg-nav)] border-b border-[var(--border-default)] sticky top-0 z-50">
@@ -90,7 +84,7 @@ export default function Navbar() {
                   </Button>
                 </Link>
               )}
-              {isAdmin && !isAdminPage && (
+              {isAdmin && (
                 <Link href="/admin">
                   <Button variant="outline" className="gap-2 border-[var(--accent-primary)] text-[var(--accent-primary)] hover:bg-[var(--accent-primary)] hover:text-white">
                     <LayoutDashboard className="w-4 h-4" />
@@ -101,51 +95,43 @@ export default function Navbar() {
             </div>
 
             <div className="ml-auto flex items-center gap-2">
-              {/* Theme Toggle */}
               <button
-              onClick={toggleTheme}
-              className="p-2 rounded-lg border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] hover:border-[var(--border-bright)] transition-all ml-2"
-              aria-label="Toggle theme"
-              suppressHydrationWarning
-            >
-              {mounted ? (
-                theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />
-              ) : (
-                <Sun className="w-4 h-4" /> // Default to sun for SSR (dark mode -> light icon)
-              )}
-            </button>
-            
-            {isLoggedIn ? (
-              <Button 
-                variant="ghost" 
-                className="gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] ml-2"
-                onClick={async () => {
-                  const supabase = createClientSideSupabase();
-                  await supabase.auth.signOut();
-                  setIsLoggedIn(false);
-                  router.push('/');
-                }}
+                onClick={toggleTheme}
+                className="p-2 rounded-lg border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] hover:border-[var(--border-bright)] transition-all ml-2"
+                aria-label="Toggle theme"
+                suppressHydrationWarning
               >
-                <User className="w-4 h-4" />
-                Log Out
-              </Button>
-            ) : (
-              <Link href="/login">
-                <Button variant="ghost" className="gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] ml-2">
+                {mounted ? (
+                  theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />
+                ) : (
+                  <Sun className="w-4 h-4" />
+                )}
+              </button>
+
+              {isLoggedIn ? (
+                <Button
+                  variant="ghost"
+                  className="gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] ml-2"
+                  onClick={handleLogout}
+                >
                   <User className="w-4 h-4" />
-                  Log In
+                  Log Out
                 </Button>
-              </Link>
-            )}
-            {!isLoggedIn && (
-              <Link href="/signup" className="ml-2">
-                <button className="btn-primary text-sm">
-                  Join Waitlist
-                </button>
-              </Link>
-            )}
+              ) : (
+                <Link href="/login">
+                  <Button variant="ghost" className="gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] ml-2">
+                    <User className="w-4 h-4" />
+                    Log In
+                  </Button>
+                </Link>
+              )}
+              {!isLoggedIn && (
+                <Link href="/signup" className="ml-2">
+                  <button className="btn-primary text-sm">Join Waitlist</button>
+                </Link>
+              )}
+            </div>
           </div>
-        </div>
 
           {/* Mobile Menu Button */}
           <div className="md:hidden flex items-center gap-2">
@@ -161,10 +147,7 @@ export default function Navbar() {
                 <Sun className="w-4 h-4" />
               )}
             </button>
-            <button
-              className="p-2 text-[var(--text-secondary)]"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            >
+            <button className="p-2 text-[var(--text-secondary)]" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
               {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
@@ -173,73 +156,38 @@ export default function Navbar() {
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
           <div className="md:hidden py-4 border-t border-[var(--border-default)] space-y-1">
-            <Link
-              href="/"
-              className="flex items-center gap-2 py-2 px-2 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
+            <Link href="/" className="flex items-center gap-2 py-2 px-2 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]" onClick={() => setIsMobileMenuOpen(false)}>
               <Home className="w-4 h-4" />
               Home
             </Link>
-            <Link
-              href="/#how-it-works"
-              className="flex items-center gap-2 py-2 px-2 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]"
-              onClick={(e) => { scrollToSection(e, 'how-it-works'); setIsMobileMenuOpen(false); }}
-            >
+            <Link href="/#how-it-works" className="flex items-center gap-2 py-2 px-2 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]" onClick={(e) => { scrollToSection(e, 'how-it-works'); setIsMobileMenuOpen(false); }}>
               <Play className="w-4 h-4" />
               How It Works
             </Link>
             {isLoggedIn && (
-              <>
-                <Link
-                  href="/seller"
-                  className="flex items-center gap-2 py-2 px-2 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <LayoutDashboard className="w-4 h-4" />
-                  Dashboard
-                </Link>
-              </>
+              <Link href="/seller" className="flex items-center gap-2 py-2 px-2 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]" onClick={() => setIsMobileMenuOpen(false)}>
+                <LayoutDashboard className="w-4 h-4" />
+                Dashboard
+              </Link>
             )}
             {isAdmin && (
-              <Link
-                href="/admin"
-                className="flex items-center gap-2 py-2 px-2 rounded-lg text-[var(--accent-primary)] font-semibold hover:bg-[var(--bg-raised)]"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
+              <Link href="/admin" className="flex items-center gap-2 py-2 px-2 rounded-lg text-[var(--accent-primary)] font-semibold hover:bg-[var(--bg-raised)]" onClick={() => setIsMobileMenuOpen(false)}>
                 <LayoutDashboard className="w-4 h-4" />
                 Switch to Admin
               </Link>
             )}
             {isLoggedIn ? (
-              <button
-                className="flex items-center gap-2 py-2 px-2 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] w-full text-left"
-                onClick={async () => {
-                  const supabase = createClientSideSupabase();
-                  await supabase.auth.signOut();
-                  setIsLoggedIn(false);
-                  setIsMobileMenuOpen(false);
-                  router.push('/');
-                }}
-              >
+              <button className="flex items-center gap-2 py-2 px-2 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] w-full text-left" onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}>
                 <User className="w-4 h-4" />
                 Log Out
               </button>
             ) : (
               <>
-                <Link
-                  href="/login"
-                  className="flex items-center gap-2 py-2 px-2 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
+                <Link href="/login" className="flex items-center gap-2 py-2 px-2 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]" onClick={() => setIsMobileMenuOpen(false)}>
                   <User className="w-4 h-4" />
                   Log In
                 </Link>
-                <Link
-                  href="/signup"
-                  className="flex items-center gap-2 py-2 px-2 rounded-lg text-[var(--accent-primary)] font-semibold hover:bg-[var(--bg-raised)]"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
+                <Link href="/signup" className="flex items-center gap-2 py-2 px-2 rounded-lg text-[var(--accent-primary)] font-semibold hover:bg-[var(--bg-raised)]" onClick={() => setIsMobileMenuOpen(false)}>
                   Join Waitlist
                 </Link>
               </>

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { createClientSideSupabase, type PlatformConnection, type Seller } from '@/lib/supabase-client';
+import { type PlatformConnection, type Seller, createClientSideSupabase } from '@/lib/supabase-client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -57,49 +57,31 @@ export default function MetaCommerceShopPage() {
 
   const loadData = async () => {
     try {
-      const supabase = createClientSideSupabase();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push('/login');
-        return;
-      }
-
-      const { data: sellerData } = await supabase
-        .from('sellers')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      const { data: adminData } = await supabase
-        .from('admins')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (!sellerData && !adminData) {
-        router.push('/signup');
-        return;
-      }
-
+      const res = await fetch('/api/auth/check-user', { credentials: 'include' });
+      if (!res.ok) { router.push('/login'); return; }
+      const userData = await res.json();
+      if (!userData.user) { router.push('/login'); return; }
+      const dbClient = createClientSideSupabase();
+      const { data: sellerData } = await dbClient.from('sellers').select('*').eq('user_id', userData.user.id).maybeSingle();
       setSeller(sellerData);
 
       if (sellerData) {
         // Try to load existing facebook or instagram connection and migrate it to meta
-        const { data: fbConnection } = await supabase
+        const { data: fbConnection } = await dbClient
           .from('platform_connections')
           .select('*')
           .eq('seller_id', sellerData.id)
           .eq('platform', 'facebook')
           .maybeSingle();
 
-        const { data: instaConnection } = await supabase
+        const { data: instaConnection } = await dbClient
           .from('platform_connections')
           .select('*')
           .eq('seller_id', sellerData.id)
           .eq('platform', 'instagram')
           .maybeSingle();
 
-        const { data: metaConnection } = await supabase
+        const { data: metaConnection } = await dbClient
           .from('platform_connections')
           .select('*')
           .eq('seller_id', sellerData.id)
@@ -115,7 +97,7 @@ export default function MetaCommerceShopPage() {
         }
         // Otherwise migrate facebook or instagram connection to meta
         else if (fbConnection) {
-          const migrated = await supabase
+          const migrated = await dbClient
             .from('platform_connections')
             .update({ platform: 'meta' })
             .eq('id', fbConnection.id)
@@ -127,7 +109,7 @@ export default function MetaCommerceShopPage() {
           }
         }
         else if (instaConnection) {
-          const migrated = await supabase
+          const migrated = await dbClient
             .from('platform_connections')
             .update({ platform: 'meta' })
             .eq('id', instaConnection.id)
