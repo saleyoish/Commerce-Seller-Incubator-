@@ -1,4 +1,4 @@
-function getAuthHeaders() {
+function getAuthHeaders(): HeadersInit {
   if (typeof window === 'undefined') return {};
   const token = localStorage.getItem('token');
   return token ? { Authorization: `Bearer ${token}` } : {};

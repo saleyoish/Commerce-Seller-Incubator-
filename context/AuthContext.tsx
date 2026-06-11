@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 
 type User = {
   id: string;
@@ -26,7 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [fetchPatched, setFetchPatched] = useState(false);
 
-  function getAuthHeaders() {
+  function getAuthHeaders(): HeadersInit {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
@@ -34,7 +34,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const originalFetch = window.fetch.bind(window);
     window.fetch = async (input, init = {}) => {
-      const url = typeof input === 'string' ? input : input.url;
+      const url = typeof input === 'string'
+        ? input
+        : input instanceof Request
+          ? input.url
+          : String(input);
       const isSameOrigin = typeof url === 'string' && (url.startsWith('/') || url.startsWith(window.location.origin));
       const token = localStorage.getItem('token');
 
@@ -55,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  async function fetchMe() {
+  const fetchMe = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch('/api/auth/me', {
@@ -69,18 +73,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       const data = await res.json();
       setUser({ id: data.id, email: data.email, isAdmin: data.isAdmin ?? false, is_temp_password: data.is_temp_password ?? false, approval_status: data.approval_status ?? null });
-    } catch (e) {
+    } catch {
       setUser(null);
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && fetchPatched) {
       fetchMe();
     }
-  }, [fetchPatched]);
+  }, [fetchPatched, fetchMe]);
 
   async function login(email: string, password: string) {
     try {
@@ -99,8 +103,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setUser(data.user || null);
       return { success: true, user: data.user };
-    } catch (err: any) {
-      return { success: false, error: err.message || 'Login failed' };
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      return { success: false, error: errorMessage || 'Login failed' };
     }
   }
 
@@ -123,8 +128,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const json = await res.json();
       if (!res.ok) return { success: false, error: json.error || 'Registration failed' };
       return { success: true };
-    } catch (err: any) {
-      return { success: false, error: err.message || 'Registration failed' };
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      return { success: false, error: errorMessage || 'Registration failed' };
     }
   }
 
