@@ -5,7 +5,7 @@ import { createStripeConnectAccount, createConnectOnboardingLink } from '@/lib/s
 
 export async function POST(request: NextRequest) {
   try {
-    const token = extractToken(request.headers, request.cookies);
+    const token = extractToken(request.headers);
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -30,11 +30,11 @@ export async function POST(request: NextRequest) {
 
     // Create Stripe Connect account if not exists
     if (!stripeAccountId) {
-      const du= await createStripeConnectAccount(seller.email);
+      const account = await createStripeConnectAccount(seller.email);
       stripeAccountId = account.id;
 
       // Update seller with Stripe account ID
-      await supabase
+      await db
         .from('sellers')
         .update({ stripe_account_id: stripeAccountId })
         .eq('id', seller.id);

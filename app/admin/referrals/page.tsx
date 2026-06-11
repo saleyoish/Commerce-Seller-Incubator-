@@ -65,19 +65,19 @@ async function getReferralsData() {
   const stats = {
     total: referrals?.length || 0,
     approved:
-      referrals?.filter((r) => r.status === "approved").length || 0,
-    active: referrals?.filter((r) => r.status === "active").length || 0,
-    paid: referrals?.filter((r) => r.paid).length || 0,
+      referrals?.filter((r: any) => r.status === "approved").length || 0,
+    active: referrals?.filter((r: any) => r.status === "active").length || 0,
+    paid: referrals?.filter((r: any) => r.paid).length || 0,
     pendingPayout:
-      referrals?.filter((r) => !r.paid && (r.status === "active" || r.status === "approved")).length || 0,
+      referrals?.filter((r: any) => !r.paid && (r.status === "active" || r.status === "approved")).length || 0,
     totalPaid:
       referrals
-        ?.filter((r) => r.paid)
-        .reduce((sum, r) => sum + (r.bonus_amount || 0), 0) || 0,
+        ?.filter((r: any) => r.paid)
+        .reduce((sum: number, r: any) => sum + (r.bonus_amount || 0), 0) || 0,
     totalPending:
       referrals
-        ?.filter((r) => !r.paid && (r.status === "active" || r.status === "approved"))
-        .reduce((sum, r) => sum + (r.bonus_amount || 0), 0) || 0,
+        ?.filter((r: any) => !r.paid && (r.status === "active" || r.status === "approved"))
+        .reduce((sum: number, r: any) => sum + (r.bonus_amount || 0), 0) || 0,
   };
 
   console.log("[Admin] Returning stats:", stats);
@@ -265,7 +265,7 @@ export default async function ReferralsAdminPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                referrals?.map((referral) => (
+                referrals?.map((referral: any) => (
                   <TableRow key={referral.id}>
                     <TableCell className="font-medium">
                       {referral.referrer?.email}

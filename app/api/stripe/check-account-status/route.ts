@@ -5,7 +5,7 @@ import { stripe } from '@/lib/stripe';
 
 export async function GET(request: NextRequest) {
   try {
-    const token = extractToken(request.headers, request.cookies);
+    const token = extractToken(request.headers);
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

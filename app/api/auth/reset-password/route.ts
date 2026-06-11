@@ -1,7 +1,9 @@
 // POST /api/auth/reset-password — Verify token and set new password
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { hashPassword } from '@/lib/password';
+import { hashPassword, generateResetToken } from '@/lib/password';
+import { sendPasswordResetEmail } from '@/lib/resend';
+import { sendPasswordResetEmailGmail } from '@/lib/gmail';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,10 +13,89 @@ export async function POST(request: NextRequest) {
     const { token, password, email, redirectTo } = body;
 
     // Legacy: email + redirectTo means the forgot-password page is calling to send the email
-    // Redirect to new endpoint
+    // Inline the forgot-password logic
     if (email && redirectTo && !token && !password) {
-      const { default: handler } = await import('@/app/api/auth/forgot-password/route');
-      return handler.POST(request);
+      const normalizedEmail = email.toLowerCase().trim();
+
+      // Check sellers table first, then admins
+      let userId: string | null = null;
+      let userEmail = normalizedEmail;
+
+      const { data: seller } = await db
+        .from('sellers')
+        .select('user_id, email')
+        .eq('email', normalizedEmail)
+        .maybeSingle();
+
+      if (seller) {
+        userId = seller.user_id;
+      } else {
+        const { data: admin } = await db
+          .from('admins')
+          .select('user_id, email')
+          .eq('email', normalizedEmail)
+          .maybeSingle();
+        if (admin) userId = admin.user_id;
+      }
+
+      // Always return success to prevent email enumeration
+      if (!userId) {
+        return NextResponse.json({ success: true });
+      }
+
+      const resetToken = generateResetToken();
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
+
+      // Store reset token in DB
+      await db.from('password_reset_tokens').upsert({
+        user_id: userId,
+        token: resetToken,
+        expires_at: expiresAt,
+        used: false,
+      }, { onConflict: 'user_id' });
+
+      const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL}/reset-password?token=${resetToken}`;
+
+      // Send email: try Resend first (if configured). If it fails, fallback to Gmail transporter.
+      let emailSent = false;
+      if (process.env.RESEND_API_KEY) {
+        try {
+          const result = await sendPasswordResetEmail(userEmail, resetUrl);
+          if (result && result.success === true) {
+            emailSent = true;
+          } else {
+            console.warn('[RESET-PASSWORD] Resend failed, falling back to Gmail');
+          }
+        } catch (resendError) {
+          console.warn('[RESET-PASSWORD] Resend error, falling back to Gmail:', resendError);
+        }
+
+        // Fallback to Gmail if Resend failed
+        if (!emailSent) {
+          if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
+            const gmailResult = await sendPasswordResetEmailGmail(userEmail, resetUrl);
+            if (gmailResult && gmailResult.success === true) {
+              emailSent = true;
+            } else {
+              console.error('[RESET-PASSWORD] Gmail fallback also failed');
+            }
+          } else {
+            console.log('[RESET-PASSWORD] Reset URL (Gmail not configured):', resetUrl);
+          }
+        }
+      } else {
+        // No Resend configured — use Gmail directly if available, otherwise log URL
+        if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
+          const gmailResult = await sendPasswordResetEmailGmail(userEmail, resetUrl);
+          if (gmailResult && gmailResult.success === true) {
+            emailSent = true;
+          }
+        } else {
+          console.log('[RESET-PASSWORD] Reset URL (no email service):', resetUrl);
+        }
+      }
+
+      return NextResponse.json({ success: true });
     }
 
     if (!token || !password) {

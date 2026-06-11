@@ -63,7 +63,7 @@ async function proxyRequest(req: NextRequest, params: { path?: string[] }) {
   headers.set('apikey', supabasePublishableKey);
 
   // Add JWT token for custom auth if available
-  const token = extractToken(req.headers, req.cookies);
+  const token = extractToken(req.headers);
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
   }

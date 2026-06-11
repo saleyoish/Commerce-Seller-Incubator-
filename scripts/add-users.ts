@@ -23,7 +23,7 @@ const db = createClient(supabaseUrl, supabaseSecretKey, {
   },
 });
 
-async function hashPassword(password) {
+async function hashPassword(password: string) {
   return bcrypt.hash(password, 12);
 }
 

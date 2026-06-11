@@ -6,7 +6,7 @@ import { hashPassword, comparePassword } from '@/lib/password';
 
 export async function GET(request: NextRequest) {
   try {
-    const token = extractToken(request.headers, request.cookies);
+    const token = extractToken(request.headers);
     if (!token) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
     const payload = await verifyJWT(token);
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const token = extractToken(request.headers, request.cookies);
+    const token = extractToken(request.headers);
     if (!token) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
     const payload = await verifyJWT(token);

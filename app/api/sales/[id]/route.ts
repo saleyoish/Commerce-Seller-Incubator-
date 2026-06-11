@@ -9,7 +9,7 @@ export async function DELETE(
 ) {
   try {
     const params = await context.params;
-    const token = extractToken(request.headers, request.cookies);
+    const token = extractToken(request.headers);
     if (!token) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
@@ -68,7 +68,7 @@ export async function PUT(
   try {
     const params = await context.params;
     const body = await request.json();
-    const token = extractToken(request.headers, request.cookies);
+    const token = extractToken(request.headers);
     if (!token) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }

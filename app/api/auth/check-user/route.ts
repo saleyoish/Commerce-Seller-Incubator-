@@ -5,7 +5,7 @@ import { db } from '@/lib/db';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
-    const token = extractToken(request.headers, request.cookies);
+    const token = extractToken(request.headers);
     if (!token) {
       return NextResponse.json(
         { error: 'No authenticated user', isSeller: false, isAdmin: false, user: null },

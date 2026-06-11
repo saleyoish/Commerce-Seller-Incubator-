@@ -14,7 +14,7 @@ function generateReferralCode(): string {
 export async function GET(req: NextRequest) {
   try {
     // Get token directly from request
-    const token = extractToken(req.headers, req.cookies);
+    const token = extractToken(req.headers);
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

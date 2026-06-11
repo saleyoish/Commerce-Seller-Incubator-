@@ -8,7 +8,7 @@ import { extractToken, verifyJWT } from '@/lib/jwt';
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     // Verify JWT and admin privileges
-    const token = extractToken(request.headers, request.cookies);
+    const token = extractToken(request.headers);
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const payload = await verifyJWT(token);
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const adminSupabase = createAdminSupabase();
     
     // Verify JWT and admin privileges
-    const token = extractToken(request.headers, request.cookies);
+    const token = extractToken(request.headers);
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const payload = await verifyJWT(token);

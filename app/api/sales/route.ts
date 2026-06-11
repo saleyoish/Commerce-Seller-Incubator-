@@ -5,7 +5,7 @@ import { db } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
-    const token = extractToken(request.headers, request.cookies);
+    const token = extractToken(request.headers);
     if (!token) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
