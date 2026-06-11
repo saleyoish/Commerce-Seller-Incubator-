@@ -35,7 +35,17 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error;
 
-    return NextResponse.json({ sales: sales || [] });
+    // Calculate seller_payout for sales that don't have it
+    const salesWithPayout = (sales || []).map((sale: any) => {
+      if (!sale.seller_payout && sale.sale_amount) {
+        const platformFee = sale.platform_fee || (sale.sale_amount * 0.05);
+        const ourCommission = sale.our_commission || ((sale.sale_amount - platformFee) * 0.15);
+        sale.seller_payout = sale.sale_amount - platformFee - ourCommission;
+      }
+      return sale;
+    });
+
+    return NextResponse.json({ sales: salesWithPayout || [] });
   } catch (err) {
     console.error('[SALES GET] error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

@@ -57,21 +57,25 @@ export default function AdminSalesPage() {
 
   const loadSales = async () => {
     try {
-      const supabase = createClientSideSupabase();
-      
-      // Fetch from platform_sales table (where manual sales are stored)
-      const { data, error } = await supabase
-        .from('platform_sales')
-        .select('*, sellers(email)')
-        .order('sale_date', { ascending: false });
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/admin/sales', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-      if (error) throw error;
-      setSales(data || []);
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Failed to load sales');
+      }
+
+      const { sales } = await response.json();
+      setSales(sales || []);
 
       // Calculate stats from platform_sales
-      const verifiedSales = (data || []).filter((s: any) => s.verification_status === 'verified');
-      const pendingSales = (data || []).filter((s: any) => s.verification_status === 'pending');
-      
+      const verifiedSales = (sales || []).filter((s: any) => s.verification_status === 'verified');
+      const pendingSales = (sales || []).filter((s: any) => s.verification_status === 'pending');
+
       const gmv = verifiedSales.reduce((sum: number, s: any) => sum + s.sale_amount, 0);
       const revenue = verifiedSales.reduce((sum: number, s: any) => sum + s.our_commission, 0);
 
@@ -94,28 +98,32 @@ export default function AdminSalesPage() {
     setSuccess(null);
 
     try {
-      const supabase = createClientSideSupabase();
-
-      const updateData: any = {
-        verification_status: status,
-        verified_at: new Date().toISOString(),
-      };
-
       if (status === 'rejected') {
         if (!rejectionReason.trim()) {
           setShowRejectModal(saleId);
           setIsProcessing(null);
           return;
         }
-        updateData.rejection_reason = rejectionReason;
       }
 
-      const { error } = await supabase
-        .from('platform_sales')
-        .update(updateData)
-        .eq('id', saleId);
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/admin/sales', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          saleId,
+          status,
+          rejectionReason: status === 'rejected' ? rejectionReason : undefined,
+        }),
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Failed to process sale');
+      }
 
       setSuccess(`Sale ${status === 'verified' ? 'approved' : 'rejected'} successfully`);
       setRejectionReason('');

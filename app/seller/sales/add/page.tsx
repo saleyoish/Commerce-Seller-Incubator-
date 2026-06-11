@@ -24,9 +24,9 @@ import {
 const PLATFORMS = [
   { id: 'whatnot', name: 'Whatnot', fee: 0.08 },
   { id: 'youtube', name: 'YouTube Live', fee: 0.30 },
-  { id: 'facebook', name: 'Facebook Live', fee: 0.05 },
-  { id: 'instagram', name: 'Instagram Live', fee: 0.05 },
+  { id: 'meta', name: 'Meta Commerce', fee: 0.05 },
   { id: 'tiktok', name: 'TikTok Shop (Manual)', fee: 0.02 },
+  { id: 'isellish', name: 'iSellish', fee: 0.15 },
 ];
 
 export default function AddManualSalePage() {
@@ -86,24 +86,16 @@ export default function AddManualSalePage() {
       const userData = await res.json();
       if (!userData.user) { router.push('/login'); return; }
 
-      const { data: sellerData } = await (await import('@/lib/db')).db
-        .from('sellers')
-        .select('*')
-        .eq('user_id', userData.user.id)
-        .maybeSingle();
+      setSeller(userData.seller);
 
-      if (!sellerData && !userData.isAdmin) {
-        router.push('/signup');
-        return;
-      }
-
-      setSeller(sellerData);
-
-      if (sellerData) {
-        const { data: productsData } = await (await import('@/lib/db')).db
+      if (userData.seller) {
+        // Load products using client-side Supabase
+        const { createClientSideSupabase } = await import('@/lib/supabase-client');
+        const supabase = createClientSideSupabase();
+        const { data: productsData } = await supabase
           .from('products')
           .select('*')
-          .eq('seller_id', sellerData.id)
+          .eq('seller_id', userData.seller.id)
           .eq('status', 'active');
         setProducts(productsData || []);
       }
@@ -131,8 +123,6 @@ export default function AddManualSalePage() {
     setSuccess(false);
 
     try {
-      const supabase = createClientSideSupabase();
-
       // Validate
       if (!formData.platform || !formData.saleAmount || parseFloat(formData.saleAmount) <= 0) {
         throw new Error('Please fill in all required fields');
@@ -156,20 +146,27 @@ export default function AddManualSalePage() {
         verification_status: 'pending',
         notes: formData.notes,
       };
-      
+
       console.log('[Sale Submit] Inserting data:', saleData);
 
-      const { data, error: submitError } = await supabase
-        .from('platform_sales')
-        .insert(saleData)
-        .select();
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/seller/sales', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(saleData),
+      });
 
-      if (submitError) {
-        console.error('[Sale Submit] Insert error:', submitError);
-        throw submitError;
+      const result = await response.json();
+
+      if (!response.ok) {
+        console.error('[Sale Submit] API error:', result);
+        throw new Error(result.error || 'Failed to create sale');
       }
 
-      console.log('[Sale Submit] Success! Inserted:', data);
+      console.log('[Sale Submit] Success! Inserted:', result.sale);
       setSuccess(true);
       
       // Reset form

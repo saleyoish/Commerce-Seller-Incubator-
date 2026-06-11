@@ -76,7 +76,7 @@ export default function SalesPage() {
   const loadSalesData = async () => {
     try {
       const { isSeller, isAdmin, seller: sellerData } = await checkUserStatus();
-      
+
       console.log('User status check:', { isSeller, isAdmin, sellerData });
 
       if (!isSeller && !isAdmin) {
@@ -98,6 +98,7 @@ export default function SalesPage() {
         }
 
         const data = await res.json();
+        console.log('Sales data loaded:', data.sales);
         setSales(data.sales || []);
       } else {
         console.error('No seller data found');
@@ -203,7 +204,7 @@ export default function SalesPage() {
                 <th className="text-left py-3 px-4 text-sm font-medium text-[var(--text-secondary)]">Date</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-[var(--text-secondary)]">Platform</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-[var(--text-secondary)]">Product</th>
-                <th className="text-right py-3 px-4 text-sm font-medium text-[var(--text-secondary)]">Amount</th>
+                <th className="text-right py-3 px-4 text-sm font-medium text-[var(--text-secondary)]">Sale Amount</th>
                 <th className="text-center py-3 px-4 text-sm font-medium text-[var(--text-secondary)]">Actions</th>
               </tr>
             </thead>
@@ -225,7 +226,7 @@ export default function SalesPage() {
                     {sale.product_name || 'N/A'}
                   </td>
                   <td className="py-3 px-4 text-sm text-right font-medium text-green-400">
-                    ${sale.sale_amount.toFixed(2)}
+                    ${sale.sale_amount ? sale.sale_amount.toFixed(2) : '0.00'}
                   </td>
                   <td className="py-3 px-4 text-center">
                     <div className="flex gap-2 justify-center">
