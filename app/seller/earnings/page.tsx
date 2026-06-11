@@ -84,7 +84,7 @@ export default function EarningsPage() {
       // Get platform sales using API route with JWT authentication
       if (sellerData) {
         const res = await fetch('/api/sales', {
-          credentials: 'include',
+          credentials: 'omit',
         });
 
         if (!res.ok) {

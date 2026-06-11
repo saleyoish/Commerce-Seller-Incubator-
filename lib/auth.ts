@@ -1,7 +1,16 @@
+function getAuthHeaders() {
+  if (typeof window === 'undefined') return {};
+  const token = localStorage.getItem('token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 // Helper to check admin status via API (avoids RLS issues)
 export const checkIsAdmin = async (): Promise<boolean> => {
   try {
-    const response = await fetch('/api/auth/check-admin');
+    const response = await fetch('/api/auth/check-admin', {
+      headers: getAuthHeaders(),
+      credentials: 'omit',
+    });
     if (!response.ok) {
       return false;
     }
@@ -23,7 +32,10 @@ export interface UserStatus {
 
 export const checkUserStatus = async (): Promise<UserStatus> => {
   try {
-    const response = await fetch('/api/auth/check-user');
+    const response = await fetch('/api/auth/check-user', {
+      headers: getAuthHeaders(),
+      credentials: 'omit',
+    });
     if (!response.ok) {
       return { isSeller: false, isAdmin: false, seller: null, user: null };
     }

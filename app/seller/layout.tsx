@@ -1,47 +1,51 @@
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
-import { verifyJWT } from '@/lib/jwt';
-import { db } from '@/lib/db';
+"use client";
+
+import { useEffect, useState } from 'react';
+import AuthGuard from '@/components/AuthGuard';
 import SellerSidebar from './SellerSidebar';
 import DynamicHeader from '@/components/seller/DynamicHeader';
 
-export default async function DashboardLayout({
+export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('auth-token')?.value;
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  if (!token) {
-    redirect('/login?redirect=/seller');
-  }
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        const res = await fetch('/api/auth/check-user', {
+          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'omit',
+          cache: 'no-store',
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        setIsAdmin(data.isAdmin ?? false);
+      } catch (error) {
+        console.error('Seller layout admin status check failed:', error);
+      }
+    };
 
-  const payload = await verifyJWT(token);
-  if (!payload) {
-    redirect('/login?redirect=/seller');
-  }
-
-  // Check if user is admin — admins can also access seller dashboard
-  const { data: admin } = await db
-    .from('admins')
-    .select('id')
-    .eq('user_id', payload.userId)
-    .maybeSingle();
-
-  const isAdmin = !!admin;
+    fetchStatus();
+  }, []);
 
   return (
-    <div className="min-h-screen bg-[var(--bg-base)] flex">
-      <SellerSidebar />
+    <AuthGuard redirectPath="/login">
+      <div className="min-h-screen bg-[var(--bg-base)] flex">
+        <SellerSidebar />
 
-      {/* Main content area */}
-      <div className="flex-1 flex flex-col min-w-0 md:ml-60">
-        <DynamicHeader isAdmin={isAdmin} />
-        <main className="flex-1 p-6">
-          {children}
-        </main>
+        {/* Main content area */}
+        <div className="flex-1 flex flex-col min-w-0 md:ml-60">
+          <DynamicHeader isAdmin={isAdmin} />
+          <main className="flex-1 p-6">
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </AuthGuard>
   );
 }

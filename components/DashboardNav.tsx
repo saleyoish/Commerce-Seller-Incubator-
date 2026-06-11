@@ -10,7 +10,7 @@ export default function DashboardNav() {
   useEffect(() => {
     const checkAdminStatus = async () => {
       try {
-        const res = await fetch('/api/auth/check-user', { credentials: 'include' });
+        const res = await fetch('/api/auth/check-user', { credentials: 'omit' });
         if (res.ok) {
           const data = await res.json();
           setIsAdmin(data.isAdmin ?? false);

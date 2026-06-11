@@ -24,18 +24,43 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchPatched, setFetchPatched] = useState(false);
+
+  function getAuthHeaders() {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
+
+  useEffect(() => {
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = async (input, init = {}) => {
+      const url = typeof input === 'string' ? input : input.url;
+      const isSameOrigin = typeof url === 'string' && (url.startsWith('/') || url.startsWith(window.location.origin));
+      const token = localStorage.getItem('token');
+
+      if (isSameOrigin && token) {
+        const headers = new Headers((init as RequestInit).headers || {});
+        if (!headers.has('Authorization')) {
+          headers.set('Authorization', `Bearer ${token}`);
+        }
+        return originalFetch(input, { ...init, headers, credentials: 'omit' });
+      }
+
+      return originalFetch(input, init);
+    };
+
+    setFetchPatched(true);
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, []);
 
   async function fetchMe() {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const headers: Record<string, string> = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
       const res = await fetch('/api/auth/me', {
-        credentials: 'include',
-        headers,
+        headers: getAuthHeaders(),
+        credentials: 'omit',
       });
       if (!res.ok) {
         setUser(null);
@@ -52,26 +77,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    fetchMe();
-  }, []);
+    if (typeof window !== 'undefined' && fetchPatched) {
+      fetchMe();
+    }
+  }, [fetchPatched]);
 
   async function login(email: string, password: string) {
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
       console.log('AuthContext login response:', data);
       if (!res.ok) return { success: false, error: data.error || 'Login failed' };
-      
-      // Store token in localStorage as backup
+
       if (data.accessToken) {
         localStorage.setItem('token', data.accessToken);
       }
-      
+
       setUser(data.user || null);
       return { success: true, user: data.user };
     } catch (err: any) {
@@ -81,7 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function logout() {
     try {
-      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'omit' });
     } finally {
       setUser(null);
       localStorage.removeItem('token');
@@ -119,5 +144,6 @@ export function useAuth() {
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
 }
+
 
 export default AuthContext;

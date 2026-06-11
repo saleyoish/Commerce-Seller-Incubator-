@@ -17,7 +17,7 @@ export default function StreamSettingsPage() {
 
   const loadSellerData = async () => {
     try {
-      const res = await fetch('/api/auth/check-user', { credentials: 'include' });
+      const res = await fetch('/api/auth/check-user', { credentials: 'omit' });
       if (!res.ok) { setIsLoading(false); return; }
       const userData = await res.json();
       if (!userData.user) { setIsLoading(false); return; }

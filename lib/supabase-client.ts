@@ -41,7 +41,7 @@ export const createClientSideSupabase = () => {
             headers: originalRequest.headers,
             body: originalRequest.body,
             redirect: originalRequest.redirect,
-            credentials: 'include',
+            credentials: 'omit',
             cache: originalRequest.cache,
             mode: originalRequest.mode,
             referrer: originalRequest.referrer,
@@ -53,7 +53,7 @@ export const createClientSideSupabase = () => {
           return fetch(proxiedRequest);
         }
 
-        return fetch(originalRequest, { ...init, credentials: 'include' });
+        return fetch(originalRequest, { ...init, credentials: 'omit' });
       },
     }
   });

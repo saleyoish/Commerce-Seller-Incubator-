@@ -39,7 +39,8 @@ export default function DynamicHeader({ isAdmin }: DynamicHeaderProps) {
   const pageInfo = getPageInfo();
 
   const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    localStorage.removeItem('token');
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'omit' });
     window.location.href = '/login';
   };
 

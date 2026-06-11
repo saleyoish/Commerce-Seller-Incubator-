@@ -47,24 +47,12 @@ export async function verifyJWT(token: string): Promise<JWTPayload | null> {
 }
 
 /**
- * Extract JWT token from request Authorization header or cookie.
+ * Extract JWT token from the Authorization header only.
  */
 export function extractToken(headers: Headers): string | null {
-  // First check Authorization header
   const authHeader = headers.get('authorization');
   if (authHeader?.startsWith('Bearer ')) {
     return authHeader.slice(7);
   }
-
-  // Then check cookie header
-  const cookieHeader = headers.get('cookie');
-  if (cookieHeader) {
-    const cookies = cookieHeader.split(';').map(c => c.trim());
-    const tokenCookie = cookies.find(c => c.startsWith('token='));
-    if (tokenCookie) {
-      return tokenCookie.slice(6); // Remove 'token=' prefix
-    }
-  }
-
   return null;
 }

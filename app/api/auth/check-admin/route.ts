@@ -18,7 +18,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const { data: admin } = await db
       .from('admins')
       .select('id')
-      .eq('user_id', payload.userId)
+      .eq('id', payload.userId)
       .maybeSingle();
 
     return NextResponse.json({ isAdmin: !!admin });

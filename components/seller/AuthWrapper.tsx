@@ -12,7 +12,7 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const res = await fetch('/api/auth/me', { credentials: 'include' });
+        const res = await fetch('/api/auth/me', { credentials: 'omit' });
         if (!res.ok) {
           router.push('/login?redirect=/seller');
         } else {

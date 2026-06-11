@@ -56,7 +56,7 @@ export default function StreamingDashboardPage() {
   const loadStreamingData = async () => {
     try {
       setError(null);
-      const authRes = await fetch('/api/auth/check-user', { credentials: 'include' });
+      const authRes = await fetch('/api/auth/check-user', { credentials: 'omit' });
       if (!authRes.ok) { router.push('/login'); return; }
       const userData = await authRes.json();
       if (!userData.user) { router.push('/login'); return; }

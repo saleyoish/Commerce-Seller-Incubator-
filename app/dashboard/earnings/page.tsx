@@ -86,7 +86,7 @@ export default function EarningsPage() {
 
       // Use API route with JWT authentication instead of direct Supabase
       const res = await fetch('/api/sales', {
-        credentials: 'include',
+        credentials: 'omit',
       });
 
       if (!res.ok) {

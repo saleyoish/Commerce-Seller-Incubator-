@@ -29,7 +29,7 @@ export default function ContentManagementPage() {
 
   const loadClips = async () => {
     try {
-      const res = await fetch('/api/auth/check-user', { credentials: 'include' });
+      const res = await fetch('/api/auth/check-user', { credentials: 'omit' });
       if (!res.ok) return;
       const userData = await res.json();
       if (!userData.user) return;

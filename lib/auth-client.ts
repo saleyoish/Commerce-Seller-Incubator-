@@ -8,17 +8,26 @@ export interface AuthUser {
   isSeller: boolean;
   is_temp_password?: boolean;
   approval_status?: string;
-  seller?: any;
+  seller?: Record<string, unknown> | null;
+}
+
+function getAuthHeaders() {
+  if (typeof window === 'undefined') return {};
+  const token = localStorage.getItem('token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 /**
- * Get the current authenticated user from the JWT cookie.
+ * Get the current authenticated user from the JWT token.
  * Returns null if not authenticated.
  * Use this in client components instead of supabase.auth.getUser().
  */
 export async function getCurrentUser(): Promise<AuthUser | null> {
   try {
-    const res = await fetch('/api/auth/me', { credentials: 'include' });
+    const res = await fetch('/api/auth/me', {
+      headers: getAuthHeaders(),
+      credentials: 'omit',
+    });
     if (!res.ok) return null;
     const data = await res.json();
     return {
@@ -39,5 +48,8 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
  * Sign out the current user.
  */
 export async function signOut(): Promise<void> {
-  await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('token');
+  }
+  await fetch('/api/auth/logout', { method: 'POST', credentials: 'omit' });
 }

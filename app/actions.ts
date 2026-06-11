@@ -1,8 +1,6 @@
 "use server";
 
-import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { verifyJWT } from "@/lib/jwt";
 import { db } from "@/lib/db";
 import { hashPassword, comparePassword } from "@/lib/password";
@@ -16,16 +14,14 @@ interface UpdateAccountData {
   newPassword?: string;
 }
 
-async function getAuthUser() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('auth-token')?.value;
+async function getAuthUser(token?: string) {
   if (!token) return null;
   return verifyJWT(token);
 }
 
 // Update user account information
-export async function updateAccountAction(data: UpdateAccountData) {
-  const payload = await getAuthUser();
+export async function updateAccountAction(data: UpdateAccountData, token?: string) {
+  const payload = await getAuthUser(token);
   if (!payload) return { error: 'Unauthorized', success: false };
 
   try {
@@ -38,7 +34,7 @@ export async function updateAccountAction(data: UpdateAccountData) {
       const { data: seller } = await db
         .from('sellers')
         .select('password_hash')
-        .eq('user_id', payload.userId)
+        .eq('id', payload.userId)
         .maybeSingle();
 
       if (!seller?.password_hash) return { error: 'User not found', success: false };
@@ -53,7 +49,7 @@ export async function updateAccountAction(data: UpdateAccountData) {
     const { error: sellerError } = await db
       .from('sellers')
       .update(updates)
-      .eq('user_id', payload.userId);
+      .eq('id', payload.userId);
 
     if (sellerError) {
       console.error('Account update error:', sellerError);
@@ -69,15 +65,15 @@ export async function updateAccountAction(data: UpdateAccountData) {
 }
 
 // Delete user account (marks as deleted, clears password)
-export async function deleteAccountAction() {
-  const payload = await getAuthUser();
+export async function deleteAccountAction(token?: string) {
+  const payload = await getAuthUser(token);
   if (!payload) return { error: 'Unauthorized', success: false };
 
   try {
     await db
       .from('sellers')
       .update({ approval_status: 'deleted', password_hash: null, updated_at: new Date().toISOString() })
-      .eq('user_id', payload.userId);
+      .eq('id', payload.userId);
 
     return { success: true, message: 'Account deleted successfully' };
   } catch (error: any) {

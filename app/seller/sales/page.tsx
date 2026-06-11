@@ -58,7 +58,7 @@ export default function SalesPage() {
     try {
       const res = await fetch(`/api/sales/${saleId}`, {
         method: 'DELETE',
-        credentials: 'include',
+        credentials: 'omit',
       });
 
       if (!res.ok) {
@@ -89,7 +89,7 @@ export default function SalesPage() {
       if (sellerData) {
         // Use API route with JWT authentication instead of direct Supabase
         const res = await fetch('/api/sales', {
-          credentials: 'include',
+          credentials: 'omit',
         });
 
         if (!res.ok) {
@@ -332,7 +332,7 @@ export default function SalesPage() {
                     const res = await fetch(`/api/sales/${editingSale.id}`, {
                       method: 'PUT',
                       headers: { 'Content-Type': 'application/json' },
-                      credentials: 'include',
+                      credentials: 'omit',
                       body: JSON.stringify({
                         product_name: productName,
                         sale_amount: saleAmount,

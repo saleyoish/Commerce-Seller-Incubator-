@@ -55,7 +55,7 @@ export default function ReferralsPage() {
   const loadReferralData = async () => {
     setError(null);
     try {
-      const res = await fetch('/api/seller/referrals', { credentials: 'include' });
+      const res = await fetch('/api/seller/referrals', { credentials: 'omit' });
       
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));

@@ -140,25 +140,7 @@ export async function POST(request: NextRequest) {
 
 
 
-      // Set HTTP-only cookie
-
-      response.cookies.set('token', token, {
-
-        httpOnly: true,
-
-        secure: process.env.NODE_ENV === 'production',
-
-        sameSite: 'lax',
-
-        maxAge: 60 * 60 * 24, // 24 hours
-
-        path: '/',
-
-      });
-
-
-
-      return response;
+            return response;
 
     }
 
@@ -232,25 +214,7 @@ export async function POST(request: NextRequest) {
 
 
 
-    // Set HTTP-only cookie
-
-    response.cookies.set('token', token, {
-
-      httpOnly: true,
-
-      secure: process.env.NODE_ENV === 'production',
-
-      sameSite: 'lax',
-
-      maxAge: 60 * 60 * 24, // 24 hours
-
-      path: '/',
-
-    });
-
-
-
-    return response;
+          return response;
 
   } catch (err: any) {
 

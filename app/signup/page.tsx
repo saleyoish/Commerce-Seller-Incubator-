@@ -84,7 +84,7 @@ function SignupPageContent() {
       const response = await fetch('/api/waitlist-signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // Important: sends cookies with request
+        credentials: 'omit', // No cookies are sent with this request
         body: JSON.stringify({
           name: formData.name,
           email: formData.email,

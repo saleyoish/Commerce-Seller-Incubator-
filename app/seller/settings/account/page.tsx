@@ -16,7 +16,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { updateAccountAction, deleteAccountAction } from '@/app/actions';
 import { useRouter } from 'next/navigation';
 import { User, Mail, Phone, AlertTriangle, Trash2, Save, Loader2 } from 'lucide-react';
 
@@ -48,9 +47,19 @@ export default function AccountSettingsPage() {
   useEffect(() => {
     async function loadUserData() {
       try {
-        const response = await fetch('/api/auth/check-user');
+        const token = localStorage.getItem('token');
+        if (!token) {
+          router.push('/login?redirect=/seller/settings/account');
+          return;
+        }
+
+        const response = await fetch('/api/auth/check-user', {
+          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'omit',
+          cache: 'no-store',
+        });
         const data = await response.json();
-        
+
         if (data.user) {
           setAccountData(prev => ({
             ...prev,
@@ -67,7 +76,7 @@ export default function AccountSettingsPage() {
     }
 
     loadUserData();
-  }, []);
+  }, [router]);
 
   const handleAccountChange = (field: string, value: string) => {
     setAccountData(prev => ({ ...prev, [field]: value }));
@@ -85,17 +94,32 @@ export default function AccountSettingsPage() {
     setMessage(null);
 
     try {
-      const result = await updateAccountAction({
-        name: accountData.name,
-        email: accountData.email,
-        phone: accountData.phone,
-        currentPassword: accountData.currentPassword,
-        newPassword: accountData.newPassword,
+      const token = localStorage.getItem('token');
+      if (!token) {
+        router.push('/login?redirect=/seller/settings/account');
+        return;
+      }
+
+      const response = await fetch('/api/auth/account', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        credentials: 'omit',
+        body: JSON.stringify({
+          name: accountData.name,
+          email: accountData.email,
+          phone: accountData.phone,
+          currentPassword: accountData.currentPassword,
+          newPassword: accountData.newPassword,
+        }),
       });
 
-      if (result.success) {
+      const result = await response.json();
+
+      if (response.ok && result.success) {
         setMessage({ type: 'success', text: result.message || 'Account updated successfully' });
-        // Clear password fields
         setAccountData(prev => ({
           ...prev,
           currentPassword: '',
@@ -115,10 +139,23 @@ export default function AccountSettingsPage() {
   const handleDeleteAccount = async () => {
     setIsDeleting(true);
     try {
-      const result = await deleteAccountAction();
+      const token = localStorage.getItem('token');
+      if (!token) {
+        router.push('/login?redirect=/seller/settings/account');
+        return;
+      }
 
-      if (result.success) {
-        // Redirect to home page after successful deletion
+      const response = await fetch('/api/auth/account', {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        credentials: 'omit',
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
         router.push('/');
       } else {
         setMessage({ type: 'error', text: result.error || 'Failed to delete account' });

@@ -1,70 +1,90 @@
+"use client";
+
 import Link from 'next/link';
-import { createServerSideSupabase } from '@/lib/supabase-server';
-import { redirect } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { LogOut, Menu } from 'lucide-react';
 import SellerSidebar from './SellerSidebar';
+import AuthGuard from '@/components/AuthGuard';
 
-export default async function DashboardLayout({
+export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createServerSideSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
+  const router = useRouter();
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  if (!user) {
-    redirect('/login?redirect=/dashboard');
-  }
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        const res = await fetch('/api/auth/check-user', {
+          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'omit',
+          cache: 'no-store',
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        setIsAdmin(data.isAdmin ?? false);
+      } catch (error) {
+        console.error('Dashboard layout admin status check failed:', error);
+      }
+    };
 
-  // Check if user is admin - admins can also access seller dashboard
-  const { data: admin } = await supabase
-    .from('admins')
-    .select('id')
-    .eq('user_id', user.id)
-    .single();
+    fetchStatus();
+  }, []);
 
-  const isAdmin = !!admin;
+  const handleLogout = async () => {
+    localStorage.removeItem('token');
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'omit' });
+    router.push('/login');
+  };
 
   return (
-    <div className="min-h-screen bg-[var(--bg-base)] flex">
-      <SellerSidebar />
+    <AuthGuard redirectPath="/login">
+      <div className="min-h-screen bg-[var(--bg-base)] flex">
+        <SellerSidebar />
 
-      {/* Main content area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Top bar */}
-        <header className="bg-[var(--bg-nav)] border-b border-[var(--border-default)] px-6 py-4 flex items-center justify-between sticky top-0 z-30">
-          <div className="flex items-center gap-4">
-            {/* Mobile menu button */}
-            <button className="md:hidden p-2 rounded-lg border border-[var(--border-default)] text-[var(--text-secondary)]">
-              <Menu className="w-4 h-4" />
-            </button>
-            <div>
-              <h1 className="text-base font-semibold text-[var(--text-primary)]">Seller Dashboard</h1>
-              <p className="text-xs text-[var(--text-muted)]">Manage your products, streams & earnings</p>
+        {/* Main content area */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* Top bar */}
+          <header className="bg-[var(--bg-nav)] border-b border-[var(--border-default)] px-6 py-4 flex items-center justify-between sticky top-0 z-30">
+            <div className="flex items-center gap-4">
+              {/* Mobile menu button */}
+              <button className="md:hidden p-2 rounded-lg border border-[var(--border-default)] text-[var(--text-secondary)]">
+                <Menu className="w-4 h-4" />
+              </button>
+              <div>
+                <h1 className="text-base font-semibold text-[var(--text-primary)]">Seller Dashboard</h1>
+                <p className="text-xs text-[var(--text-muted)]">Manage your products, streams & earnings</p>
+              </div>
             </div>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            {isAdmin && (
-              <Link href="/admin">
-                <button className="btn-secondary text-sm px-4 py-2">
-                  Switch to Admin
-                </button>
-              </Link>
-            )}
-            <Link href="/logout">
-              <button className="btn-secondary text-sm px-4 py-2 flex items-center gap-2">
+            
+            <div className="flex items-center gap-3">
+              {isAdmin && (
+                <Link href="/admin">
+                  <button className="btn-secondary text-sm px-4 py-2">
+                    Switch to Admin
+                  </button>
+                </Link>
+              )}
+              <button
+                onClick={handleLogout}
+                className="btn-secondary text-sm px-4 py-2 flex items-center gap-2"
+              >
                 <LogOut className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Log Out</span>
               </button>
-            </Link>
-          </div>
-        </header>
+            </div>
+          </header>
 
-        <main className="flex-1 p-6">
-          {children}
-        </main>
+          <main className="flex-1 p-6">
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </AuthGuard>
   );
 }

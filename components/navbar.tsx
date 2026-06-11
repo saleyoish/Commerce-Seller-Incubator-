@@ -18,7 +18,7 @@ export default function Navbar() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const res = await fetch('/api/auth/me', { credentials: 'include' });
+        const res = await fetch('/api/auth/me', { credentials: 'omit' });
         if (res.ok) {
           const data = await res.json();
           setIsLoggedIn(true);
@@ -35,7 +35,8 @@ export default function Navbar() {
   }, []);
 
   const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    localStorage.removeItem('token');
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'omit' });
     setIsLoggedIn(false);
     setIsAdmin(false);
     router.push('/');

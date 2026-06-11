@@ -94,7 +94,7 @@ export default function StreamingSetupPage() {
       setIsLoading(true);
       setError(null);
 
-      const authRes = await fetch('/api/auth/check-user', { credentials: 'include' });
+      const authRes = await fetch('/api/auth/check-user', { credentials: 'omit' });
       if (!authRes.ok) {
         console.log('No user found, redirecting to login');
         router.push('/login');
@@ -170,7 +170,7 @@ export default function StreamingSetupPage() {
       setError(null);
       setSuccess(null);
 
-      const authRes = await fetch('/api/auth/check-user', { credentials: 'include' });
+      const authRes = await fetch('/api/auth/check-user', { credentials: 'omit' });
       if (!authRes.ok) {
         setError('Please login first');
         return;

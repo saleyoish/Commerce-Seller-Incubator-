@@ -57,7 +57,7 @@ export default function MetaCommerceShopPage() {
 
   const loadData = async () => {
     try {
-      const res = await fetch('/api/auth/check-user', { credentials: 'include' });
+      const res = await fetch('/api/auth/check-user', { credentials: 'omit' });
       if (!res.ok) { router.push('/login'); return; }
       const userData = await res.json();
       if (!userData.user) { router.push('/login'); return; }
