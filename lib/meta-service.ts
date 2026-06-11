@@ -24,6 +24,7 @@ type MetaProduct = {
   retailer_price?: number;
   category?: string;
   sale_price?: number;
+  sku?: string;
   raw?: any;
 };
 

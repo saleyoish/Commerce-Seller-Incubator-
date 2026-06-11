@@ -72,7 +72,17 @@ export async function POST(request: Request) {
 
         for (const whatnotProduct of whatnotProducts) {
           try {
-            // Check if product already exists locally via a Whatnot mapping
+            // Use SKU if available from Whatnot, otherwise use Whatnot product ID
+            const whatnotSku = whatnotProduct.sku || whatnotProduct.id;
+
+            // Check if product already exists locally via SKU or Whatnot mapping
+            const { data: existingProductBySku } = await supabase
+              .from("products")
+              .select("id")
+              .eq("seller_id", sellerId)
+              .eq("sku", whatnotSku)
+              .maybeSingle();
+
             const { data: existingWhatnotProduct } = await supabase
               .from("whatnot_products")
               .select("*")
@@ -80,7 +90,60 @@ export async function POST(request: Request) {
               .eq("whatnot_product_id", whatnotProduct.id)
               .maybeSingle();
 
-            if (existingWhatnotProduct?.product_id) {
+            if (existingProductBySku) {
+              // Update existing local product by SKU
+              await supabase
+                .from("products")
+                .update({
+                  name: whatnotProduct.title,
+                  description: whatnotProduct.description,
+                  price: whatnotProduct.price,
+                  category: mapWhatnotCategoryToLocal(whatnotProduct.category),
+                  stock_quantity: whatnotProduct.quantity,
+                  images: whatnotProduct.images,
+                  sku: whatnotSku,
+                  status: "active",
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("id", existingProductBySku.id);
+
+              // Update or create Whatnot mapping
+              if (existingWhatnotProduct) {
+                await supabase
+                  .from("whatnot_products")
+                  .update({
+                    product_id: existingProductBySku.id,
+                    whatnot_sku: whatnotSku,
+                    title: whatnotProduct.title,
+                    description: whatnotProduct.description,
+                    price: whatnotProduct.price,
+                    quantity: whatnotProduct.quantity,
+                    category: whatnotProduct.category,
+                    images: whatnotProduct.images,
+                    sync_status: "synced",
+                    last_sync_at: new Date().toISOString(),
+                    whatnot_updated_at: whatnotProduct.metadata?.updated_at || new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq("whatnot_product_id", whatnotProduct.id);
+              } else {
+                await supabase.from("whatnot_products").insert({
+                  seller_id: sellerId,
+                  product_id: existingProductBySku.id,
+                  whatnot_product_id: whatnotProduct.id,
+                  whatnot_sku: whatnotSku,
+                  title: whatnotProduct.title,
+                  description: whatnotProduct.description,
+                  price: whatnotProduct.price,
+                  quantity: whatnotProduct.quantity,
+                  category: whatnotProduct.category,
+                  images: whatnotProduct.images,
+                  sync_status: "synced",
+                  last_sync_at: new Date().toISOString(),
+                  whatnot_created_at: whatnotProduct.metadata?.created_at || new Date().toISOString(),
+                });
+              }
+            } else if (existingWhatnotProduct?.product_id) {
               // Update the local product and mapping when the product is already linked
               await supabase
                 .from("products")
@@ -91,6 +154,7 @@ export async function POST(request: Request) {
                   category: mapWhatnotCategoryToLocal(whatnotProduct.category),
                   stock_quantity: whatnotProduct.quantity,
                   images: whatnotProduct.images,
+                  sku: whatnotSku,
                   status: "active",
                   updated_at: new Date().toISOString(),
                 })
@@ -105,6 +169,7 @@ export async function POST(request: Request) {
                   quantity: whatnotProduct.quantity,
                   category: whatnotProduct.category,
                   images: whatnotProduct.images,
+                  whatnot_sku: whatnotSku,
                   sync_status: "synced",
                   last_sync_at: new Date().toISOString(),
                   whatnot_updated_at: whatnotProduct.metadata?.updated_at || new Date().toISOString(),
@@ -123,6 +188,7 @@ export async function POST(request: Request) {
                   category: mapWhatnotCategoryToLocal(whatnotProduct.category),
                   stock_quantity: whatnotProduct.quantity,
                   images: whatnotProduct.images,
+                  sku: whatnotSku,
                   status: "active",
                 })
                 .select()
@@ -136,7 +202,7 @@ export async function POST(request: Request) {
                 .from("whatnot_products")
                 .update({
                   product_id: newProduct.id,
-                  whatnot_sku: whatnotProduct.id,
+                  whatnot_sku: whatnotSku,
                   title: whatnotProduct.title,
                   description: whatnotProduct.description,
                   price: whatnotProduct.price,
@@ -161,6 +227,7 @@ export async function POST(request: Request) {
                   category: mapWhatnotCategoryToLocal(whatnotProduct.category),
                   stock_quantity: whatnotProduct.quantity,
                   images: whatnotProduct.images,
+                  sku: whatnotSku,
                   status: "active",
                 })
                 .select()
@@ -174,7 +241,7 @@ export async function POST(request: Request) {
                 seller_id: sellerId,
                 product_id: newProduct.id,
                 whatnot_product_id: whatnotProduct.id,
-                whatnot_sku: whatnotProduct.id,
+                whatnot_sku: whatnotSku,
                 title: whatnotProduct.title,
                 description: whatnotProduct.description,
                 price: whatnotProduct.price,
@@ -220,6 +287,9 @@ export async function POST(request: Request) {
       // Sync each product
       for (const product of products || []) {
         try {
+          // Use SKU if available, otherwise use product ID
+          const sellerSku = (product as any).sku || product.id;
+
           // Check if product already synced
           const { data: existingWhatnotProduct } = await supabase
             .from("whatnot_products")
@@ -247,6 +317,7 @@ export async function POST(request: Request) {
                 quantity: product.stock_quantity,
                 category: product.category,
                 images: product.images,
+                whatnot_sku: sellerSku,
                 sync_status: "synced",
                 last_sync_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
@@ -268,7 +339,7 @@ export async function POST(request: Request) {
               seller_id: sellerId,
               product_id: product.id,
               whatnot_product_id: whatnotProductId,
-              whatnot_sku: product.id,
+              whatnot_sku: sellerSku,
               title: product.name,
               description: product.description,
               price: product.price,

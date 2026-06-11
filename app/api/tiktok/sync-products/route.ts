@@ -99,6 +99,9 @@ export async function POST(request: Request) {
     // Sync each product
     for (const product of products || []) {
       try {
+        // Use SKU if available, otherwise use product ID
+        const sellerSku = (product as any).sku || product.id;
+
         // Check if product already synced
         const { data: existingTikTokProduct } = await supabase
           .from("tiktok_products")
@@ -112,7 +115,7 @@ export async function POST(request: Request) {
             title: product.name,
             description: product.description || "",
             skus: [{
-              seller_sku: product.id,
+              seller_sku: sellerSku,
               price: {
                 amount: product.price.toString(),
                 currency: "USD",
@@ -125,6 +128,7 @@ export async function POST(request: Request) {
             .from("tiktok_products")
             .update({
               sync_status: "synced",
+              sku: sellerSku,
               last_sync_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             })
@@ -137,7 +141,7 @@ export async function POST(request: Request) {
             category_id: mapCategoryToTikTok(product.category),
             images: product.images || [],
             skus: [{
-              seller_sku: product.id,
+              seller_sku: sellerSku,
               price: {
                 amount: product.price.toString(),
                 currency: "USD",
@@ -151,7 +155,7 @@ export async function POST(request: Request) {
             seller_id: sellerId,
             product_id: product.id,
             tiktok_product_id: tiktokProductId,
-            sku: product.id,
+            sku: sellerSku,
             sync_status: "synced",
             last_sync_at: new Date().toISOString(),
           });

@@ -71,10 +71,14 @@ async function proxyRequest(req: NextRequest, params: { path?: string[] }) {
   headers.delete('host');
   headers.delete('content-length');
 
+  const body = ['GET', 'HEAD'].includes(req.method) ? undefined : req.body;
+
   const response = await fetch(url, {
     method: req.method,
     headers,
-    body: ['GET', 'HEAD'].includes(req.method) ? undefined : await req.arrayBuffer(),
+    body,
+    // @ts-ignore - duplex is required for streaming bodies in modern fetch
+    duplex: body ? 'half' : undefined,
     redirect: 'manual',
   });
 

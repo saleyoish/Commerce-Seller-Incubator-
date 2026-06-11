@@ -36,7 +36,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { X, Upload, Image as ImageIcon, Loader2, Plus, FileUp, Search, Edit, Save } from 'lucide-react';
+import { X, Upload, Image as ImageIcon, Loader2, Plus, FileUp, Search, Edit, Save, RefreshCw, Download } from 'lucide-react';
 import { getCategoryNames } from '@/lib/categories';
 
 const productSchema = z.object({
@@ -45,6 +45,7 @@ const productSchema = z.object({
   price: z.string().min(1, 'Price is required'),
   category: z.string().min(1, 'Category is required'),
   stock_quantity: z.string().min(1, 'Stock quantity is required'),
+  sku: z.string().optional(),
 });
 
 type ProductFormData = z.infer<typeof productSchema>;
@@ -71,10 +72,17 @@ export default function ProductsPage() {
     price: 0,
     stock_quantity: 0,
     category: '',
+    sku: '',
     status: 'active' as 'active' | 'inactive',
   });
   const [isEditing, setIsEditing] = useState(false);
   const [categories, setCategories] = useState<string[]>([]);
+  const [platformConnections, setPlatformConnections] = useState<any[]>([]);
+  const [syncing, setSyncing] = useState<{ meta: boolean; tiktok: boolean; whatnot: boolean }>({
+    meta: false,
+    tiktok: false,
+    whatnot: false,
+  });
 
   // Load custom categories on mount
   useEffect(() => {
@@ -125,6 +133,15 @@ export default function ProductsPage() {
 
         setProducts(productsData || []);
         setFilteredProducts(productsData || []);
+
+        // Get platform connections
+        const { data: connections } = await supabase
+          .from('platform_connections')
+          .select('*')
+          .eq('seller_id', sellerData.id)
+          .in('platform', ['meta', 'facebook', 'tiktok', 'whatnot']);
+
+        setPlatformConnections(connections || []);
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -184,25 +201,29 @@ export default function ProductsPage() {
   const uploadImages = async (productId: string): Promise<string[]> => {
     if (images.length === 0) return [];
 
-    const supabase = createClientSideSupabase();
+    const token = localStorage.getItem('token');
     const imageUrls: string[] = [];
 
     for (const image of images) {
-      const fileName = `${productId}/${Date.now()}-${image.name}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('product-images')
-        .upload(fileName, image);
+      const formData = new FormData();
+      formData.append('file', image);
+      formData.append('productId', productId);
 
-      if (uploadError) {
-        throw new Error(`Failed to upload ${image.name}: ${uploadError.message}`);
+      const response = await fetch('/api/seller/products/upload-image', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(`Failed to upload ${image.name}: ${result.error}`);
       }
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(fileName);
-
-      imageUrls.push(publicUrl);
+      const result = await response.json();
+      imageUrls.push(result.imageUrl);
     }
 
     return imageUrls;
@@ -215,39 +236,59 @@ export default function ProductsPage() {
     setError(null);
 
     try {
-      const supabase = createClientSideSupabase();
-
-      // Create product first
-      const { data: product, error: productError } = await supabase
-        .from('products')
-        .insert({
+      // Create product via API to bypass RLS
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/seller/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
           seller_id: seller.id,
           name: data.name,
           description: data.description || null,
-          price: parseFloat(data.price),
+          price: data.price,
           category: data.category,
-          stock_quantity: parseInt(data.stock_quantity),
+          stock_quantity: data.stock_quantity,
+          sku: data.sku || null,
           status: 'active',
-        })
-        .select()
-        .single();
+        }),
+      });
 
-      if (productError || !product) {
-        throw new Error(productError?.message || 'Failed to create product');
+      const result = await response.json();
+
+      if (!response.ok) {
+        console.error('Product creation error:', result);
+        throw new Error(result.error || 'Failed to create product');
       }
+
+      const product = result.product;
 
       // Upload images if any
       let imageUrls: string[] = [];
       if (images.length > 0) {
-        imageUrls = await uploadImages(product.id);
+        try {
+          imageUrls = await uploadImages(product.id);
+          console.log('Images uploaded successfully:', imageUrls);
+        } catch (imageError: any) {
+          console.error('Image upload failed, but product was created:', imageError);
+          // Continue without images, product was created successfully
+          setError(`Product created but image upload failed: ${imageError.message}`);
+        }
       }
 
       // Update product with image URLs
       if (imageUrls.length > 0) {
-        await supabase
-          .from('products')
-          .update({ images: imageUrls })
-          .eq('id', product.id);
+        const token = localStorage.getItem('token');
+        await fetch(`/api/seller/products/${product.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ images: imageUrls }),
+        });
       }
 
       // Reset form
@@ -260,6 +301,7 @@ export default function ProductsPage() {
       setAddDialogOpen(false);
       loadData();
     } catch (err: any) {
+      console.error('Product submission error:', err);
       setError(err.message || 'Failed to create product');
     } finally {
       setIsLoading(false);
@@ -270,11 +312,23 @@ export default function ProductsPage() {
     if (!confirm('Are you sure you want to delete this product?')) return;
 
     try {
-      const supabase = createClientSideSupabase();
-      await supabase.from('products').delete().eq('id', productId);
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/seller/products/${productId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Failed to delete product');
+      }
+
       loadData();
     } catch (error) {
       console.error('Error deleting product:', error);
+      setError('Failed to delete product');
     }
   };
 
@@ -286,6 +340,7 @@ export default function ProductsPage() {
       price: product.price,
       stock_quantity: product.stock_quantity,
       category: product.category || '',
+      sku: (product as any).sku || '',
       status: product.status === 'deleted' ? 'inactive' : (product.status as 'active' | 'inactive'),
     });
     setEditDialogOpen(true);
@@ -299,23 +354,28 @@ export default function ProductsPage() {
     setError(null);
 
     try {
-      const supabase = createClientSideSupabase();
-      
-      // Update local database
-      const { error } = await supabase
-        .from('products')
-        .update({
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/seller/products/${editingProduct.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
           name: editFormData.name,
           description: editFormData.description || null,
           price: editFormData.price,
           stock_quantity: editFormData.stock_quantity,
           category: editFormData.category || null,
+          sku: editFormData.sku || null,
           status: editFormData.status,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', editingProduct.id);
+        }),
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Failed to update product');
+      }
 
       setEditDialogOpen(false);
       setEditingProduct(null);
@@ -336,59 +396,131 @@ export default function ProductsPage() {
 
     try {
       const text = await csvFile.text();
-      const rows = text.split('\n').filter(row => row.trim());
-      const headers = rows[0].split(',').map(h => h.trim().toLowerCase());
+      const token = localStorage.getItem('token');
 
-      // Validate headers
-      const requiredHeaders = ['name', 'price', 'category', 'stock_quantity'];
-      const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
-      if (missingHeaders.length > 0) {
-        throw new Error(`Missing required columns: ${missingHeaders.join(', ')}`);
+      const response = await fetch('/api/seller/products/import', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          seller_id: seller.id,
+          csvData: text,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to import CSV');
       }
-
-      const supabase = createClientSideSupabase();
-      const productsToInsert = [];
-
-      for (let i = 1; i < rows.length; i++) {
-        const values = rows[i].split(',').map(v => v.trim());
-        const product: any = { seller_id: seller.id, status: 'active' };
-
-        headers.forEach((header, index) => {
-          if (values[index]) {
-            if (header === 'price') {
-              product[header] = parseFloat(values[index]);
-            } else if (header === 'stock_quantity') {
-              product[header] = parseInt(values[index]);
-            } else {
-              product[header] = values[index];
-            }
-          }
-        });
-
-        if (product.name && product.price) {
-          productsToInsert.push(product);
-        }
-      }
-
-      if (productsToInsert.length === 0) {
-        throw new Error('No valid products found in CSV');
-      }
-
-      const { error: insertError } = await supabase
-        .from('products')
-        .insert(productsToInsert);
-
-      if (insertError) throw insertError;
 
       setCsvFile(null);
       setImportDialogOpen(false);
       loadData();
-      alert(`Successfully imported ${productsToInsert.length} products!`);
+      alert(result.message);
     } catch (err: any) {
       setError(err.message || 'Failed to import CSV');
     } finally {
       setImportLoading(false);
     }
+  };
+
+  // Download sample CSV
+  const downloadSampleCsv = () => {
+    const csvContent = 'name,description,price,category,stock_quantity,sku,images\nSample Product,This is a sample product,29.99,Fashion,10,PROD-001,https://example.com/image1.jpg,https://example.com/image2.jpg\nAnother Product,Another sample,19.99,Electronics,5,PROD-002,https://example.com/image3.jpg';
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'sample_products.csv';
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  };
+
+  // Sync products from Meta Commerce
+  const syncMetaProducts = async () => {
+    if (!seller) return;
+    setSyncing(prev => ({ ...prev, meta: true }));
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/facebook/sync-products?sellerId=${seller.id}`, {
+        method: 'POST',
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to sync Meta products');
+      }
+
+      loadData();
+      alert(data.message || `Successfully synced ${data.syncedCount} products from Meta Commerce`);
+    } catch (err: any) {
+      setError(err.message || 'Failed to sync Meta products');
+    } finally {
+      setSyncing(prev => ({ ...prev, meta: false }));
+    }
+  };
+
+  // Sync products from TikTok Shop
+  const syncTikTokProducts = async () => {
+    if (!seller) return;
+    setSyncing(prev => ({ ...prev, tiktok: true }));
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/tiktok/sync-products?sellerId=${seller.id}`, {
+        method: 'POST',
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to sync TikTok products');
+      }
+
+      loadData();
+      alert(data.message || `Successfully synced ${data.successCount || data.total} products to TikTok Shop`);
+    } catch (err: any) {
+      setError(err.message || 'Failed to sync TikTok products');
+    } finally {
+      setSyncing(prev => ({ ...prev, tiktok: false }));
+    }
+  };
+
+  // Sync products from Whatnot
+  const syncWhatnotProducts = async (syncType: 'pull' | 'push' = 'pull') => {
+    if (!seller) return;
+    setSyncing(prev => ({ ...prev, whatnot: true }));
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/whatnot/sync-products?sellerId=${seller.id}&syncType=${syncType}`, {
+        method: 'POST',
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to sync Whatnot products');
+      }
+
+      loadData();
+      alert(data.message || `Successfully synced ${data.successCount || data.total} products from Whatnot`);
+    } catch (err: any) {
+      setError(err.message || 'Failed to sync Whatnot products');
+    } finally {
+      setSyncing(prev => ({ ...prev, whatnot: false }));
+    }
+  };
+
+  // Check if platform is connected
+  const isPlatformConnected = (platform: string) => {
+    return platformConnections.some(
+      conn => conn.platform === platform || (platform === 'meta' && (conn.platform === 'meta' || conn.platform === 'facebook'))
+    );
   };
 
   const getStatusBadge = (status: string) => {
@@ -427,7 +559,7 @@ export default function ProductsPage() {
     <div className="space-y-6 animate-fade-in-up">
       {/* Actions Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
@@ -439,6 +571,74 @@ export default function ProductsPage() {
               className="pl-10 w-64 input-premium"
             />
           </div>
+
+          {/* Platform Sync Controls */}
+          {isPlatformConnected('meta') && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={syncMetaProducts}
+              disabled={syncing.meta}
+              className="border-[var(--border-default)] gap-2"
+            >
+              {syncing.meta ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4" />
+              )}
+              Sync Meta
+            </Button>
+          )}
+
+          {isPlatformConnected('tiktok') && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={syncTikTokProducts}
+              disabled={syncing.tiktok}
+              className="border-[var(--border-default)] gap-2"
+            >
+              {syncing.tiktok ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4" />
+              )}
+              Sync TikTok
+            </Button>
+          )}
+
+          {isPlatformConnected('whatnot') && (
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => syncWhatnotProducts('pull')}
+                disabled={syncing.whatnot}
+                className="border-[var(--border-default)] gap-2"
+              >
+                {syncing.whatnot ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4" />
+                )}
+                Pull Whatnot
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => syncWhatnotProducts('push')}
+                disabled={syncing.whatnot}
+                className="border-[var(--border-default)] gap-2"
+              >
+                {syncing.whatnot ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4" />
+                )}
+                Push Whatnot
+              </Button>
+            </div>
+          )}
 
           {/* Import CSV Dialog */}
           <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
@@ -454,7 +654,7 @@ export default function ProductsPage() {
               <DialogHeader>
                 <DialogTitle className="text-[var(--text-primary)]">Import Products from CSV</DialogTitle>
                 <DialogDescription className="text-[var(--text-muted)]">
-                  Upload a CSV file with columns: name, price, category, stock_quantity, description (optional)
+                  Upload a CSV file with columns: name, price, category, stock_quantity, description (optional), sku (optional), images (optional - comma-separated URLs)
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
@@ -463,6 +663,14 @@ export default function ProductsPage() {
                     <AlertDescription>{error}</AlertDescription>
                   </Alert>
                 )}
+                <Button
+                  onClick={downloadSampleCsv}
+                  variant="outline"
+                  className="w-full border-[var(--border-default)]"
+                >
+                  <FileUp className="w-4 h-4 mr-2" />
+                  Download Sample CSV
+                </Button>
                 <div className="border-2 border-dashed border-[var(--border-default)] rounded-lg p-6 hover:border-[var(--accent-primary)] transition-colors">
                   <input
                     type="file"
@@ -591,6 +799,17 @@ export default function ProductsPage() {
                     )}
                   </div>
 
+                  <div className="space-y-2">
+                    <Label htmlFor="sku" className="text-[var(--text-secondary)]">SKU (Optional)</Label>
+                    <Input 
+                      id="sku" 
+                      {...register('sku')} 
+                      className="input-premium"
+                      placeholder="e.g., PROD-001"
+                    />
+                    <p className="text-xs text-[var(--text-muted)]">Unique identifier for inventory tracking and duplicate prevention</p>
+                  </div>
+
                   {/* Image Upload */}
                   <div className="space-y-2">
                     <Label htmlFor="images" className="text-[var(--text-secondary)]">Product Images (up to {PLATFORM_CONFIG.MAX_IMAGES_PER_PRODUCT})</Label>
@@ -712,13 +931,19 @@ export default function ProductsPage() {
                   filteredProducts.map((product) => (
                     <TableRow key={product.id} className="border-[var(--border-default)] hover:bg-[var(--row-hover)]">
                       <TableCell>
-                        {product.images && product.images.length > 0 ? (
+                        {product.images && product.images.length > 0 && product.images[0] ? (
                           <img
                             src={product.images[0]}
                             alt={product.name}
                             className="w-12 h-12 object-cover rounded border border-[var(--border-default)]"
+                            onError={(e) => {
+                              console.error('Image load error:', product.images[0]);
+                              (e.target as HTMLImageElement).style.display = 'none';
+                              (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                            }}
                           />
-                        ) : (
+                        ) : null}
+                        {(!product.images || product.images.length === 0 || !product.images[0]) && (
                           <div className="w-12 h-12 bg-[var(--bg-raised)] rounded flex items-center justify-center border border-[var(--border-default)]">
                             <ImageIcon className="h-6 w-6 text-[var(--text-muted)]" />
                           </div>
@@ -838,6 +1063,17 @@ export default function ProductsPage() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit_sku" className="text-[var(--text-secondary)]">SKU (Optional)</Label>
+              <Input
+                id="edit_sku"
+                value={editFormData.sku}
+                onChange={(e) => setEditFormData({ ...editFormData, sku: e.target.value })}
+                className="input-premium"
+                placeholder="e.g., PROD-001"
+              />
+              <p className="text-xs text-[var(--text-muted)]">Unique identifier for inventory tracking and duplicate prevention</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit_status" className="text-[var(--text-secondary)]">Status</Label>

@@ -128,12 +128,12 @@ export async function POST(request: Request) {
 
       for (const metaProduct of metaProducts) {
         try {
-          // Check if product already exists for this seller with same name (since we don't have platform_id mapping)
+          // Check if product already exists for this seller with same SKU (if available) or name
           const { data: existingProduct } = await supabase
             .from('products')
             .select('id')
             .eq('seller_id', sellerId)
-            .eq('name', metaProduct.name || 'Untitled')
+            .or(`sku.eq.${metaProduct.sku || ''},name.eq.${metaProduct.name || 'Untitled'}`)
             .maybeSingle();
 
           const productData: any = {
@@ -146,6 +146,7 @@ export async function POST(request: Request) {
             images: metaProduct.imageUrl ? [metaProduct.imageUrl] : [],
             status: metaProduct.status || 'active' as const,
             source_platform: 'meta',
+            sku: metaProduct.sku || null,
             metadata: {
               meta_product_id: metaProduct.id,
               meta_catalog_id: catalog.id,

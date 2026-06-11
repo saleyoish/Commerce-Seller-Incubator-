@@ -14,46 +14,29 @@ if (!supabasePublishableKey) {
   throw new Error('Missing NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY environment variable');
 }
 
+// Monkey-patch Request constructor to add duplex: 'half' for streaming bodies
+// This is required by modern Fetch API when dealing with streams
+if (typeof window !== 'undefined') {
+  const OriginalRequest = window.Request;
+  window.Request = function(input: RequestInfo | URL, init?: RequestInit) {
+    if (init?.body) {
+      (init as any).duplex = 'half';
+    }
+    return new OriginalRequest(input, init);
+  } as any;
+}
+
 export const createClientSideSupabase = () => {
   // Let @supabase/ssr handle all cookie logic natively — it uses
   // document.cookie correctly and handles URL-encoded values / chunked
   // tokens out of the box. Custom cookie implementations break in
   // production when tokens contain '=' characters.
-  const supabaseOrigin = new URL(supabaseUrl).origin;
-
   const client = createBrowserClient(supabaseUrl, supabasePublishableKey, {
     global: {
       headers: {
         'x-my-custom-header': 'commerce-seller-incubator',
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-      },
-      fetch: async (input, init) => {
-        const originalRequest = typeof input === 'string' ? new Request(input, init) : new Request(input, init);
-        const originalUrl = new URL(originalRequest.url);
-
-        if (originalUrl.origin === supabaseOrigin) {
-          const proxyUrl = new URL(`/api/supabase${originalUrl.pathname}`, window.location.origin);
-          proxyUrl.search = originalUrl.search;
-
-          const proxiedRequest = new Request(proxyUrl.toString(), {
-            method: originalRequest.method,
-            headers: originalRequest.headers,
-            body: originalRequest.body,
-            redirect: originalRequest.redirect,
-            credentials: 'omit',
-            cache: originalRequest.cache,
-            mode: originalRequest.mode,
-            referrer: originalRequest.referrer,
-            referrerPolicy: originalRequest.referrerPolicy,
-            integrity: originalRequest.integrity,
-            keepalive: originalRequest.keepalive,
-          });
-
-          return fetch(proxiedRequest);
-        }
-
-        return fetch(originalRequest, { ...init, credentials: 'omit' });
       },
     }
   });
@@ -116,6 +99,8 @@ export type Product = {
   stock_quantity: number;
   images: string[];
   status: string;
+  sku: string | null;
+  source_platform: string | null;
   created_at: string;
   updated_at: string;
 };

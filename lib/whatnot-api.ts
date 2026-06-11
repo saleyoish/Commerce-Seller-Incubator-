@@ -17,6 +17,7 @@ interface WhatnotProduct {
   currency?: string;
   quantity: number;
   images: string[];
+  sku?: string;
   metadata?: Record<string, any>;
 }
 
