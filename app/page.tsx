@@ -337,7 +337,7 @@ export default function Home() {
                 <div className="w-8 h-8 bg-gradient-to-br from-[#7C3AED] to-[#06B6D4] rounded-lg flex items-center justify-center">
                   <Video className="w-4 h-4 text-white" />
                 </div>
-                <span className="font-bold gradient-text">Live Commerce</span>
+                <span className="font-bold gradient-text">Isellish</span>
               </div>
               <p className="text-sm text-[var(--text-muted)]">
                 Empowering sellers to succeed on TikTok Shop with training, tools, and support.
@@ -348,6 +348,7 @@ export default function Home() {
               <ul className="space-y-2 text-sm text-[var(--text-muted)]">
                 <li><Link href="#how-it-works" className="hover:text-[var(--text-primary)] transition-colors">How It Works</Link></li>
                 <li><Link href="/seller/training" className="hover:text-[var(--text-primary)] transition-colors">Training</Link></li>
+                <li><Link href="/leaderboard" className="hover:text-[var(--text-primary)] transition-colors">Leaderboard</Link></li>
                 <li><Link href="/dashboard/tiktok-shop" className="hover:text-[var(--text-primary)] transition-colors">TikTok Shop</Link></li>
                 <li><Link href="/dashboard/referrals" className="hover:text-[var(--text-primary)] transition-colors">My Referrals</Link></li>
               </ul>

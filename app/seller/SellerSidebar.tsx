@@ -68,7 +68,7 @@ export default function SellerSidebar() {
             <Sparkles className="w-4 h-4 text-white" />
           </div>
           <div>
-            <span className="font-bold gradient-text text-sm leading-none block">Live Commerce</span>
+            <span className="font-bold gradient-text text-sm leading-none block">Isellish</span>
             <span className="text-[10px] uppercase tracking-widest text-[var(--text-muted)]">Seller</span>
           </div>
         </div>

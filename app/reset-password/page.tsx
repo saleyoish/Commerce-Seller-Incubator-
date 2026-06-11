@@ -67,7 +67,7 @@ function ResetPasswordContent() {
           <div className="w-10 h-10 bg-gradient-to-br from-[#7C3AED] to-[#06B6D4] rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(124,58,237,0.3)]">
             <Sparkles className="w-5 h-5 text-white" />
           </div>
-          <span className="font-bold gradient-text text-xl">Live Commerce</span>
+          <span className="font-bold gradient-text text-xl">Isellish</span>
         </div>
 
         <div className="card-premium">

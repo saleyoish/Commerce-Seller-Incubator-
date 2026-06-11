@@ -142,5 +142,5 @@ export async function submitWaitlistAction(formData: FormData) {
   }
 
   revalidatePath("/");
-  redirect("/waitlist-success");
+  return;
 }

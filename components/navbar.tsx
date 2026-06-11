@@ -56,9 +56,9 @@ export default function Navbar() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
             <div className="w-8 h-8 bg-gradient-to-br from-[#7C3AED] to-[#06B6D4] rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">L</span>
+              <span className="text-white font-bold text-sm">I</span>
             </div>
-            <span className="font-bold gradient-text text-lg">Live Commerce</span>
+            <span className="font-bold gradient-text text-lg">Isellish</span>
           </Link>
 
           {/* Desktop Navigation */}

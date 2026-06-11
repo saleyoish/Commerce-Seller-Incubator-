@@ -79,7 +79,6 @@ export async function proxy(request: NextRequest) {
     '/signup',
     '/forgot-password',
     '/reset-password',
-    '/waitlist-success',
   ];
 
   const isPublicRoute =

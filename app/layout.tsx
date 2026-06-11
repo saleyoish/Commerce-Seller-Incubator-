@@ -12,8 +12,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Live Commerce Platform - Sell Live, Grow Fast",
-  description: "The all-in-one platform for live commerce sellers. Upload products, go live, and sell directly to your audience.",
+  title: "Isellish Platform - Sell Live, Grow Fast",
+  description: "The all-in-one platform for Isellish sellers. Upload products, go live, and sell directly to your audience.",
 };
 
 const themeScript = `

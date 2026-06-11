@@ -25,9 +25,9 @@ export const sendSellerSignupConfirmation = async (to: string, sellerName: strin
     await resend.emails.send({
       from: fromEmail,
       to,
-      subject: 'Welcome to Live Commerce Platform',
+      subject: 'Welcome to Isellish Platform',
       html: `
-        <h1>Welcome to Live Commerce!</h1>
+        <h1>Welcome to Isellish!</h1>
         <p>Hi ${sellerName},</p>
         <p>Thank you for signing up as a seller. Your account is currently pending admin approval.</p>
         <p>Next steps:</p>
@@ -37,7 +37,7 @@ export const sendSellerSignupConfirmation = async (to: string, sellerName: strin
           <li>Upload your products</li>
           <li>Start selling!</li>
         </ol>
-        <p>Best regards,<br>Live Commerce Team</p>
+        <p>Best regards,<br>Isellish Team</p>
       `,
     });
   } catch (error) {
@@ -66,7 +66,7 @@ export const sendSellerApprovalNotification = async (to: string, sellerName: str
         <p>Hi ${sellerName},</p>
         <p>${message}</p>
         ${approved ? '<p><a href="/dashboard">Go to Dashboard</a></p>' : ''}
-        <p>Best regards,<br>Live Commerce Team</p>
+        <p>Best regards,<br>Isellish Team</p>
       `,
     });
   } catch (error) {
@@ -91,7 +91,7 @@ export const sendSaleNotification = async (to: string, sellerName: string, produ
           <li><strong>Amount:</strong> $${amount.toFixed(2)}</li>
         </ul>
         <p>The sale is being processed and will be included in your next payout.</p>
-        <p>Best regards,<br>Live Commerce Team</p>
+        <p>Best regards,<br>Isellish Team</p>
       `,
     });
   } catch (error) {
@@ -112,7 +112,7 @@ export const sendPayoutNotification = async (to: string, sellerName: string, amo
         <p>Hi ${sellerName},</p>
         <p>A payout of <strong>$${amount.toFixed(2)}</strong> has been initiated to your connected bank account.</p>
         <p>It may take 1-2 business days to appear in your account.</p>
-        <p>Best regards,<br>Live Commerce Team</p>
+        <p>Best regards,<br>Isellish Team</p>
       `,
     });
   } catch (error) {
@@ -136,7 +136,7 @@ export const sendAdminNewSellerNotification = async (adminEmail: string, sellerE
           <li><strong>Phone:</strong> ${sellerPhone}</li>
         </ul>
         <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/admin/sellers" style="background-color: #7C3AED; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Review & Approve</a></p>
-        <p>Best regards,<br>Live Commerce Team</p>
+        <p>Best regards,<br>Isellish Team</p>
       `,
     });
   } catch (error) {
@@ -167,7 +167,7 @@ export const sendPasswordResetEmail = async (to: string, resetUrl: string) => {
         <p style="word-break: break-all; color: #3b82f6;">${resetUrl}</p>
         <p>This link expires in 1 hour.</p>
         <p>If you didn't request this, please ignore this email.</p>
-        <p>Best regards,<br>Live Commerce Team</p>
+        <p>Best regards,<br>Isellish Team</p>
       `,
     });
     console.log('Resend API response:', result);

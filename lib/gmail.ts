@@ -43,13 +43,13 @@ export const sendAccountCreatedToSeller = async (
     const transporter = createTransporter();
 
     await transporter.sendMail({
-      from: `"Live Commerce Platform" <${gmailUser}>`,
+      from: `"Isellish Platform" <${gmailUser}>`,
       to,
       subject: 'Your Account Has Been Created - Awaiting Admin Approval',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #7C3AED 0%, #06B6D4 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
-            <h1 style="color: white; margin: 0;">Welcome to Live Commerce!</h1>
+            <h1 style="color: white; margin: 0;">Welcome to Isellish!</h1>
           </div>
           <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-radius: 0 0 8px 8px;">
             <h2>Hi ${name},</h2>
@@ -72,7 +72,7 @@ export const sendAccountCreatedToSeller = async (
               If you have any questions, please contact our support team.
             </p>
             
-            <p>Best regards,<br><strong>Live Commerce Team</strong></p>
+            <p>Best regards,<br><strong>Isellish Team</strong></p>
           </div>
         </div>
       `,
@@ -100,7 +100,7 @@ export const sendNewSellerNotificationToAdmin = async (
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
 
     await transporter.sendMail({
-      from: `"Live Commerce Platform" <${gmailUser}>`,
+      from: `"Isellish Platform" <${gmailUser}>`,
       to: adminEmail,
       subject: 'New Seller Registration - Approval Required',
       html: `
@@ -127,7 +127,7 @@ export const sendNewSellerNotificationToAdmin = async (
               </a>
             </div>
             
-            <p>Best regards,<br><strong>Live Commerce Platform</strong></p>
+            <p>Best regards,<br><strong>Isellish Platform</strong></p>
           </div>
         </div>
       `,
@@ -153,7 +153,7 @@ export const sendReferralApprovalEmailToSeller = async (
     const transporter = createTransporter();
 
     await transporter.sendMail({
-      from: `"Live Commerce Platform" <${gmailUser}>`,
+      from: `"Isellish Platform" <${gmailUser}>`,
       to: referrerEmail,
       subject: 'Great News! Your Referral Has Been Approved',
       html: `
@@ -183,7 +183,7 @@ export const sendReferralApprovalEmailToSeller = async (
               Thank you for helping grow our community!
             </p>
             
-            <p>Best regards,<br><strong>Live Commerce Team</strong></p>
+            <p>Best regards,<br><strong>Isellish Team</strong></p>
           </div>
         </div>
       `,
@@ -209,7 +209,7 @@ export const sendApprovalEmailToSeller = async (
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
 
     await transporter.sendMail({
-      from: `"Live Commerce Platform" <${gmailUser}>`,
+      from: `"Isellish Platform" <${gmailUser}>`,
       to,
       subject: 'Your Account Has Been Approved - Start Selling Now!',
       html: `
@@ -246,7 +246,7 @@ export const sendApprovalEmailToSeller = async (
               You can change your password anytime from your account settings.
             </p>
             
-            <p>Welcome to the team!<br><strong>Live Commerce Team</strong></p>
+            <p>Welcome to the team!<br><strong>Isellish Team</strong></p>
           </div>
         </div>
       `,
@@ -265,7 +265,7 @@ export const sendPasswordResetEmailGmail = async (to: string, resetUrl: string) 
   try {
     const transporter = createTransporter();
     await transporter.sendMail({
-      from: `"Live Commerce Platform" <${gmailUser}>`,
+      from: `"Isellish Platform" <${gmailUser}>`,
       to,
       subject: 'Password Reset Request',
       html: `
@@ -278,7 +278,7 @@ export const sendPasswordResetEmailGmail = async (to: string, resetUrl: string) 
         <p style="word-break:break-all; color:#3b82f6;">${resetUrl}</p>
         <p>This link expires in 1 hour.</p>
         <p>If you didn't request this, please ignore this email.</p>
-        <p>Best regards,<br>Live Commerce Team</p>
+        <p>Best regards,<br>Isellish Team</p>
       `,
     });
     console.log('Password reset email sent via Gmail to:', to);

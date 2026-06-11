@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import WaitlistSuccess from '@/components/WaitlistSuccess';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -110,34 +111,7 @@ function SignupPageContent() {
   };
 
   if (isSubmitted) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-base)] p-4">
-        <Card className="w-full max-w-md card-premium border-2 border-green-200">
-          <CardContent className="p-12 text-center">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <CheckCircle className="w-10 h-10 text-green-600" />
-            </div>
-            <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-2">
-              Application Submitted!
-            </h2>
-            <p className="text-[var(--text-secondary)] mb-4">
-              Your account has been created and is pending admin approval.
-            </p>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md mx-auto">
-              <p className="text-sm text-blue-800">
-                You will receive your login credentials via email once your account is approved.
-              </p>
-            </div>
-            <Button 
-              className="mt-6 w-full btn-primary"
-              onClick={() => router.push('/login')}
-            >
-              Go to Login
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <WaitlistSuccess />;
   }
 
   return (
@@ -156,7 +130,7 @@ function SignupPageContent() {
             <div className="w-12 h-12 bg-gradient-to-br from-[#7C3AED] to-[#06B6D4] rounded-xl flex items-center justify-center">
               <Sparkles className="w-6 h-6 text-white" />
             </div>
-            <span className="font-bold gradient-text text-2xl">Live Commerce</span>
+            <span className="font-bold gradient-text text-2xl">Isellish</span>
           </div>
 
           <h1 className="text-4xl xl:text-5xl font-semibold text-[var(--text-primary)] mb-6 leading-tight">
@@ -189,7 +163,7 @@ function SignupPageContent() {
             <div className="w-10 h-10 bg-gradient-to-br from-[#7C3AED] to-[#06B6D4] rounded-xl flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <span className="font-bold gradient-text text-xl">Live Commerce</span>
+            <span className="font-bold gradient-text text-xl">Isellish</span>
           </div>
 
           <Card className="card-premium">
