@@ -141,41 +141,29 @@ export default function MetaCommerceShopPage() {
     setSuccess(null);
 
     try {
-      const supabase = createClientSideSupabase();
-      const record = {
-        seller_id: seller.id,
-        platform: 'meta',
-        status: 'connected',
-        platform_username: null,
-        platform_user_id: null,
-        access_token: formData.accessToken || connection?.access_token || null,
-        metadata: {
-          access_token: formData.accessToken || connection?.access_token || null,
-          last_product_sync_at: connection?.metadata?.last_product_sync_at || null,
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/seller/platform-connections/meta', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
-        connected_at: connection?.connected_at || new Date().toISOString(),
-      };
+        body: JSON.stringify({
+          accessToken: formData.accessToken || connection?.access_token || null,
+          connectionId: connection?.id || null,
+        }),
+      });
 
-      let result;
-      if (connection) {
-        result = await supabase
-          .from('platform_connections')
-          .update(record)
-          .eq('id', connection.id)
-          .select()
-          .single();
-      } else {
-        result = await supabase
-          .from('platform_connections')
-          .insert(record)
-          .select()
-          .single();
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to save connection');
       }
 
-      if (result.error) throw result.error;
-      if (result.data) {
-        setConnection(result.data);
+      if (data.connection) {
+        setConnection(data.connection);
         setSuccess('Meta Commerce Shop connected successfully.');
+        setFormData({ accessToken: '' });
       }
     } catch (error: any) {
       console.error('Error saving Meta Commerce Shop connection:', error);
