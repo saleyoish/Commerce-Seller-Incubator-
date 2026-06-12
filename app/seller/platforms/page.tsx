@@ -139,15 +139,6 @@ export default function PlatformsPage() {
         category: getConnectionStatus('whatnot')?.platform_category ?? undefined,
       },
       {
-        id: 'youtube',
-        name: 'YouTube Live',
-        icon: <YoutubeIcon className="w-8 h-8" />,
-        color: 'bg-red-600 text-white',
-        description: 'Live streaming + shopping',
-        status: getConnectionStatus('youtube')?.status as any || 'setup',
-        username: getConnectionStatus('youtube')?.platform_username ?? undefined,
-      },
-      {
         id: 'meta-commerce-shop',
         name: 'Meta Commerce Shop',
         icon: <MetaIcon className="w-8 h-8" />,

@@ -24,38 +24,29 @@ import {
 } from 'lucide-react';
 
 const INTEGRATIONS = [
-  { 
-    id: 'youtube', 
-    name: 'YouTube', 
-    icon: Play, 
-    color: 'text-red-500', 
-    bgColor: 'bg-red-500/10',
-    href: '/seller/platforms/youtube',
-    description: 'Connect your YouTube channel for live streaming'
-  },
-  { 
-    id: 'meta-commerce-shop', 
-    name: 'Meta Commerce Shop', 
-    icon: Globe, 
-    color: 'text-blue-500', 
+  {
+    id: 'meta-commerce-shop',
+    name: 'Meta Commerce Shop',
+    icon: Globe,
+    color: 'text-blue-500',
     bgColor: 'bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10',
     href: '/seller/platforms/meta-commerce-shop',
     description: 'Connect your Meta Commerce Shop (Facebook & Instagram) and sync products'
   },
-  { 
-    id: 'whatnot', 
-    name: 'Whatnot', 
-    icon: ShoppingBag, 
-    color: 'text-orange-500', 
+  {
+    id: 'whatnot',
+    name: 'Whatnot',
+    icon: ShoppingBag,
+    color: 'text-orange-500',
     bgColor: 'bg-orange-500/10',
     href: '/seller/platforms/whatnot',
     description: 'Connect your Whatnot shop and sync products'
   },
-  { 
-    id: 'tiktok', 
-    name: 'TikTok', 
-    icon: Music, 
-    color: 'text-white', 
+  {
+    id: 'tiktok',
+    name: 'TikTok',
+    icon: Music,
+    color: 'text-white',
     bgColor: 'bg-gray-800',
     href: '/seller/platforms/tiktok',
     description: 'Connect your TikTok Shop and sync products'

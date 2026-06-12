@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
       const errorMsg = tokenData.error?.message || 'Failed to exchange token';
       console.error('Token exchange error:', tokenData);
       return NextResponse.redirect(
-        `${BASE_URL}/seller/platforms/facebook?error=${encodeURIComponent(errorMsg)}`
+        `${BASE_URL}/seller/platforms/meta-commerce-shop?error=${encodeURIComponent(errorMsg)}`
       );
     }
 

@@ -377,6 +377,16 @@ export default function MetaCommerceShopPage() {
               Meta Commerce Manager
             </Link>
           </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+            <p className="text-sm text-blue-800 font-medium mb-2">Need help with authorization?</p>
+            <p className="text-sm text-blue-700 mb-2">If you see a domain error during authorization, you can use the manual access token method instead:</p>
+            <ol className="text-sm text-blue-700 list-decimal list-inside space-y-1">
+              <li>Go to <Link href="https://developers.facebook.com/tools/explorer/" target="_blank" className="text-blue-600 hover:underline">Facebook Graph API Explorer</Link></li>
+              <li>Select your app and generate a short-lived access token</li>
+              <li>Paste the token in the field above and click "Connect Meta Commerce Shop"</li>
+            </ol>
+          </div>
         </CardContent>
       </Card>
     </div>
