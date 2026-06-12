@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { createClientSideSupabase, type PlatformConnection } from '@/lib/supabase-client';
+import { type PlatformConnection } from '@/lib/supabase-client';
 import { checkUserStatus } from '@/lib/auth';
 import { 
   Play, 
@@ -63,19 +63,18 @@ export default function PlatformsSettingsPage() {
 
   const loadConnections = async () => {
     try {
-      const supabase = createClientSideSupabase();
-      const { isSeller, seller: sellerData } = await checkUserStatus();
-      
-      if (sellerData) {
-        const { data: connectionsData, error } = await supabase
-          .from('platform_connections')
-          .select('*')
-          .eq('seller_id', sellerData.id);
+      const response = await fetch('/api/seller/platform-connections', {
+        headers: { 'Content-Type': 'application/json' },
+      });
 
-        if (!error && connectionsData) {
-          setConnections(connectionsData);
-        }
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        console.error('Error loading connections from backend:', response.status, errorData);
+        return;
       }
+
+      const json = await response.json();
+      setConnections(json.connections || []);
     } catch (error) {
       console.error('Error loading connections:', error);
     } finally {

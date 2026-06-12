@@ -147,14 +147,22 @@ export default function MetaCommerceShopPage() {
         router.push('/login'); 
         return; 
       }
-      const dbClient = createClientSideSupabase();
-      const { data: sellerData, error: sellerError } = await dbClient.from('sellers').select('*').eq('id', userData.id).maybeSingle();
-      
-      if (sellerError) {
-        console.error('Error fetching seller:', sellerError);
+
+      const sellerRes = await fetch('/api/seller/me', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!sellerRes.ok) {
+        const sellerError = await sellerRes.json().catch(() => null);
+        console.error('Error fetching seller from backend:', sellerRes.status, sellerError);
+        if (sellerRes.status === 404) {
+          router.push('/login');
+          return;
+        }
+        throw new Error(sellerError?.error || 'Failed to fetch seller');
       }
-      
-      console.log('Seller data:', sellerData);
+
+      const sellerJson = await sellerRes.json();
+      const sellerData = sellerJson.seller;
       setSeller(sellerData);
 
       if (sellerData) {
@@ -299,28 +307,27 @@ export default function MetaCommerceShopPage() {
     }
   };
 
-  const handleAuthConnect = async () => {
-    console.log('handleAuthConnect called');
-    
-    // Check if already connected to prevent unnecessary OAuth
-    if (connection) {
+  const handleAuthConnect = async (force = false) => {
+    console.log('handleAuthConnect called', { force });
+
+    if (connection && !force) {
       console.log('Already connected, skipping OAuth');
       setSuccess('Meta Commerce Shop is already connected.');
       return;
     }
-    
+
     setError(null);
     try {
       console.log('Fetching auth URL from /api/facebook/auth');
-      
+
       // Get JWT token from localStorage
       const token = localStorage.getItem('token');
       console.log('JWT token present:', !!token);
-      
+
       if (!token) {
         throw new Error('You must be logged in to connect with Meta');
       }
-      
+
       const response = await fetch('/api/facebook/auth', {
         method: 'POST',
         headers: {
@@ -338,7 +345,6 @@ export default function MetaCommerceShopPage() {
       }
 
       console.log('Redirecting to Meta OAuth');
-      // Use redirect instead of popup to avoid browser blocking
       window.location.href = data.authUrl;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to initiate Meta OAuth';
@@ -406,13 +412,25 @@ export default function MetaCommerceShopPage() {
     setSuccess(null);
 
     try {
-      const supabase = createClientSideSupabase();
-      const { error } = await supabase
-        .from('platform_connections')
-        .delete()
-        .eq('id', connection.id);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('You must be logged in to disconnect.');
+      }
 
-      if (error) throw error;
+      const response = await fetch('/api/facebook/disconnect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ connectionId: connection.id }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to disconnect.');
+      }
+
       setConnection(null);
       setFormData({ accessToken: '' });
       setSuccess('Meta Commerce Shop disconnected.');
@@ -423,7 +441,7 @@ export default function MetaCommerceShopPage() {
   };
 
   const handleReauthorize = async () => {
-    handleAuthConnect();
+    await handleAuthConnect(true);
   };
 
   const handleSyncProducts = async () => {
