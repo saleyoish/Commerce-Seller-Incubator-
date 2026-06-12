@@ -317,7 +317,6 @@ export default function AdminSalesPage() {
                 <TableHead>Platform</TableHead>
                 <TableHead>Product</TableHead>
                 <TableHead>Amount</TableHead>
-                <TableHead>Net to Seller</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-center">Actions</TableHead>
               </TableRow>
@@ -325,7 +324,7 @@ export default function AdminSalesPage() {
             <TableBody>
               {sales.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-gray-500 py-8">
+                  <TableCell colSpan={7} className="text-center text-gray-500 py-8">
                     No sales yet
                   </TableCell>
                 </TableRow>
@@ -337,7 +336,6 @@ export default function AdminSalesPage() {
                     <TableCell className="capitalize">{sale.platform}</TableCell>
                     <TableCell>{sale.product_name || 'Unknown'}</TableCell>
                     <TableCell className="font-medium">${sale.sale_amount?.toFixed(2)}</TableCell>
-                    <TableCell className="text-green-600 font-medium">${sale.seller_payout?.toFixed(2)}</TableCell>
                     <TableCell>{getStatusBadge(sale)}</TableCell>
                     <TableCell className="text-center">
                       {sale.verification_status === 'pending' ? (

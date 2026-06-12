@@ -132,15 +132,16 @@ export default function EarningsPage() {
   const stats = useMemo(() => {
     const verifiedSales = filteredSales.filter(s => s.verification_status === 'verified');
     const pendingSales = filteredSales.filter(s => s.verification_status === 'pending');
-    
-    const totalSales = verifiedSales.reduce((sum, s) => sum + s.sale_amount, 0);
+
+    // Use all sales for total sales (not just verified)
+    const totalSales = filteredSales.reduce((sum, s) => sum + s.sale_amount, 0);
     const totalPlatformFees = verifiedSales.reduce((sum, s) => sum + s.platform_fee, 0);
     const totalCommission = verifiedSales.reduce((sum, s) => sum + s.our_commission, 0);
     const totalPayout = verifiedSales.reduce((sum, s) => sum + s.seller_payout, 0);
     const pendingPayout = verifiedSales
       .filter(s => s.payout_status === 'pending')
       .reduce((sum, s) => sum + s.seller_payout, 0);
-    
+
     // Pending sales (awaiting verification)
     const pendingVerificationAmount = pendingSales.reduce((sum, s) => sum + s.sale_amount, 0);
     const pendingVerificationCount = pendingSales.length;

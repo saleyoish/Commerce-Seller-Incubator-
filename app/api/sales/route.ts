@@ -35,12 +35,15 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error;
 
-    // Calculate seller_payout for sales that don't have it
+    // Calculate seller_payout for sales that don't have it or have incorrect values
     const salesWithPayout = (sales || []).map((sale: any) => {
-      if (!sale.seller_payout && sale.sale_amount) {
-        const platformFee = sale.platform_fee || (sale.sale_amount * 0.05);
-        const ourCommission = sale.our_commission || ((sale.sale_amount - platformFee) * 0.15);
-        sale.seller_payout = sale.sale_amount - platformFee - ourCommission;
+      const platformFee = sale.platform_fee || (sale.sale_amount * 0.05);
+      const ourCommission = sale.our_commission || ((sale.sale_amount - platformFee) * 0.15);
+      const correctPayout = Math.max(0, sale.sale_amount - platformFee - ourCommission);
+
+      // Recalculate if seller_payout is missing or seems incorrect (greater than sale amount)
+      if (!sale.seller_payout || sale.seller_payout > sale.sale_amount) {
+        sale.seller_payout = correctPayout;
       }
       return sale;
     });

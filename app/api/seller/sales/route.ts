@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
         sale_amount: parseFloat(sale_amount),
         platform_fee: parseFloat(platform_fee),
         our_commission: parseFloat(our_commission),
-        seller_payout: parseFloat(seller_payout) || (parseFloat(sale_amount) - parseFloat(platform_fee) - parseFloat(our_commission)),
+        seller_payout: parseFloat(seller_payout) || Math.max(0, parseFloat(sale_amount) - parseFloat(platform_fee) - parseFloat(our_commission)),
         sale_date,
         buyer_info: buyer_info || {},
         entry_type: entry_type || 'manual',

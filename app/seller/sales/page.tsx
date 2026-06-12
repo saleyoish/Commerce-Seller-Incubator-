@@ -297,17 +297,16 @@ export default function SalesPage() {
               </div>
               <div>
                 <label className="text-sm font-medium text-[var(--text-secondary)]">Platform</label>
-                <select 
+                <select
                   className="input-premium mt-1"
                   defaultValue={editingSale.platform || ''}
                   id="edit-platform"
                 >
-                  <option value="youtube">YouTube</option>
-                  <option value="instagram">Instagram</option>
-                  <option value="facebook">Facebook</option>
-                  <option value="tiktok">TikTok</option>
                   <option value="whatnot">Whatnot</option>
-                  <option value="other">Other</option>
+                  <option value="youtube">YouTube Live</option>
+                  <option value="meta">Meta Commerce</option>
+                  <option value="tiktok">TikTok Shop (Manual)</option>
+                  <option value="isellish">iSellish</option>
                 </select>
               </div>
               <div>
