@@ -114,7 +114,17 @@ export default function DashboardContent() {
 
   const handleStripeOnboarding = async () => {
     try {
-      const response = await fetch('/api/stripe/connect-onboarding', { method: 'POST' });
+      const token = localStorage.getItem('token');
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const response = await fetch('/api/stripe/connect-onboarding', { 
+        method: 'POST',
+        headers,
+      });
       const data = await response.json();
       if (data.url) window.location.href = data.url;
     } catch (error) {

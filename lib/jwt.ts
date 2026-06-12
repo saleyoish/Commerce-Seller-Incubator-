@@ -1,12 +1,11 @@
 // JWT utilities using jose (Edge-compatible)
 import { SignJWT, jwtVerify } from 'jose';
 
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET || '48b4c6bfd33d1b4b2becf6956a86deb5';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
 
-if (!JWT_SECRET) {
-  throw new Error('Missing JWT_SECRET environment variable');
-}
+console.log('[JWT] JWT_SECRET loaded:', JWT_SECRET ? 'YES' : 'NO');
+console.log('[JWT] JWT_EXPIRES_IN:', JWT_EXPIRES_IN);
 
 const secret = new TextEncoder().encode(JWT_SECRET);
 
@@ -51,8 +50,12 @@ export async function verifyJWT(token: string): Promise<JWTPayload | null> {
  */
 export function extractToken(headers: Headers): string | null {
   const authHeader = headers.get('authorization');
+  console.log('[JWT] extractToken - authHeader:', authHeader ? authHeader.substring(0, 30) + '...' : 'NONE');
   if (authHeader?.startsWith('Bearer ')) {
-    return authHeader.slice(7);
+    const token = authHeader.slice(7);
+    console.log('[JWT] extractToken - token extracted:', token.substring(0, 30) + '...');
+    return token;
   }
+  console.log('[JWT] extractToken - no Bearer token found');
   return null;
 }

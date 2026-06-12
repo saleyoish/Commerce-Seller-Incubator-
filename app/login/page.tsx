@@ -52,6 +52,19 @@ export default function LoginPage() {
 
       const user = (result as any).user;
       
+      // Wait a moment to ensure token is stored in localStorage
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Verify token is stored before redirect
+      const token = localStorage.getItem('token');
+      console.log('[LoginPage] Token in localStorage before redirect:', !!token);
+      console.log('[LoginPage] Token length:', token?.length || 0);
+      
+      if (!token) {
+        console.error('[LoginPage] Token not found in localStorage after login');
+        throw new Error('Login successful but token not stored. Please try again.');
+      }
+      
       if (user?.isAdmin) {
         window.location.href = '/admin';
       } else if (user?.is_temp_password) {

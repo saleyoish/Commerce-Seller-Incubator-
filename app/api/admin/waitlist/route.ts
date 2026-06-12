@@ -25,10 +25,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    // Fetch waitlist data using service role client
+    // Fetch only approved sellers from sellers table
     const { data: waitlist, error } = await db
-      .from('waitlist')
+      .from('sellers')
       .select('*')
+      .eq('approval_status', 'approved')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -36,13 +37,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch waitlist: ' + error.message }, { status: 500 });
     }
 
-    // Get stats
+    // Get stats for approved sellers only
     const stats = {
       total: waitlist?.length || 0,
-      pending: waitlist?.filter((w) => w.status === 'pending').length || 0,
-      approved: waitlist?.filter((w) => w.status === 'approved').length || 0,
-      contacted: waitlist?.filter((w) => w.status === 'contacted').length || 0,
-      withExperience: waitlist?.filter((w) => w.has_live_experience).length || 0,
+      activeStripe: waitlist?.filter((w) => w.stripe_onboarding_status === 'active').length || 0,
     };
 
     return NextResponse.json({ waitlist: waitlist || [], stats });

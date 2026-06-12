@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
 
 
     console.log('[LOGIN] Attempting login for email:', email.toLowerCase().trim());
+    console.log('[LOGIN] JWT_SECRET configured:', process.env.JWT_SECRET ? 'YES' : 'NO');
 
 
 
@@ -54,11 +55,7 @@ export async function POST(request: NextRequest) {
 
     console.log('[LOGIN] DB error:', dbError);
 
-    console.log('[LOGIN] User data:', user);
-
-    console.log('[LOGIN] Password hash exists:', user?.password_hash ? 'YES' : 'NO');
-
-    console.log('[LOGIN] User email from DB:', user?.email);
+    console.log('[LOGIN] User data:', user ? { id: user.id, email: user.email, hasPassword: !!user.password_hash } : 'NONE');
 
     console.log('[LOGIN] Input email:', email.toLowerCase().trim());
 
@@ -126,7 +123,9 @@ export async function POST(request: NextRequest) {
 
       // Use admin.id as userId since we're not using Supabase Auth
 
+      console.log('[LOGIN] Generating JWT token for admin:', adminUser.id);
       const token = await signJWT({ userId: adminUser.id, email: adminUser.email });
+      console.log('[LOGIN] JWT token generated successfully');
 
 
 
@@ -176,7 +175,11 @@ export async function POST(request: NextRequest) {
 
     // Use seller.id as userId since we're not using Supabase Auth
 
+    console.log('[LOGIN] Generating JWT token for seller:', user.id);
     const token = await signJWT({ userId: user.id, email: user.email });
+    console.log('[LOGIN] JWT token generated successfully');
+    console.log('[LOGIN] Token length:', token.length);
+    console.log('[LOGIN] Token preview:', token.substring(0, 50) + '...');
 
 
 
@@ -214,6 +217,7 @@ export async function POST(request: NextRequest) {
 
 
 
+    console.log('[LOGIN] Response prepared with accessToken');
           return response;
 
   } catch (err: any) {

@@ -1,20 +1,37 @@
 import { createAdminSupabase } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
 import { fetchUserBusinesses, fetchOwnedCatalogs, fetchCatalogProducts } from '@/lib/meta-service';
+import { verifyJWT, extractToken } from '@/lib/jwt';
+import { db } from '@/lib/db';
 
 export async function POST(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const sellerId = searchParams.get('sellerId');
-
-    console.log('[Sync Products] Starting sync for sellerId:', sellerId);
-
-    if (!sellerId) {
+    console.log('[Sync Products] Starting sync');
+    
+    // Get JWT token from headers
+    const token = extractToken(request.headers);
+    
+    if (!token) {
+      console.log('[Sync Products] No JWT token found');
       return NextResponse.json(
-        { error: 'Missing sellerId' },
-        { status: 400 }
+        { error: 'Authentication required' },
+        { status: 401 }
       );
     }
+
+    console.log('[Sync Products] Verifying JWT token');
+    const payload = await verifyJWT(token);
+    
+    if (!payload) {
+      console.log('[Sync Products] Invalid JWT token');
+      return NextResponse.json(
+        { error: 'Invalid token' },
+        { status: 401 }
+      );
+    }
+
+    console.log('[Sync Products] JWT token verified, userId:', payload.userId);
+    const sellerId = payload.userId;
 
     const supabase = createAdminSupabase();
 

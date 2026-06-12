@@ -28,6 +28,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   function getAuthHeaders(): HeadersInit {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    console.log('[AuthContext] getAuthHeaders - token present:', !!token);
+    console.log('[AuthContext] getAuthHeaders - token length:', token?.length || 0);
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
@@ -42,10 +44,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const isSameOrigin = typeof url === 'string' && (url.startsWith('/') || url.startsWith(window.location.origin));
       const token = localStorage.getItem('token');
 
+      console.log('[AuthContext] fetch interceptor - URL:', url);
+      console.log('[AuthContext] fetch interceptor - isSameOrigin:', isSameOrigin);
+      console.log('[AuthContext] fetch interceptor - token present:', !!token);
+
       if (isSameOrigin && token) {
         const headers = new Headers((init as RequestInit).headers || {});
         if (!headers.has('Authorization')) {
           headers.set('Authorization', `Bearer ${token}`);
+          console.log('[AuthContext] fetch interceptor - Authorization header set');
         }
         return originalFetch(input, { ...init, headers, credentials: 'omit' });
       }
@@ -60,20 +67,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const fetchMe = useCallback(async () => {
+    console.log('[AuthContext] fetchMe called');
     setLoading(true);
     try {
+      const token = localStorage.getItem('token');
+      console.log('[AuthContext] fetchMe - token in localStorage:', !!token);
+      
       const res = await fetch('/api/auth/me', {
         headers: getAuthHeaders(),
         credentials: 'omit',
       });
+      console.log('[AuthContext] fetchMe - response status:', res.status);
+      
       if (!res.ok) {
+        console.log('[AuthContext] fetchMe - response not OK, clearing user');
         setUser(null);
         setLoading(false);
         return;
       }
       const data = await res.json();
+      console.log('[AuthContext] fetchMe - user data received:', { id: data.id, email: data.email });
       setUser({ id: data.id, email: data.email, isAdmin: data.isAdmin ?? false, is_temp_password: data.is_temp_password ?? false, approval_status: data.approval_status ?? null });
-    } catch {
+    } catch (error) {
+      console.error('[AuthContext] fetchMe - error:', error);
       setUser(null);
     } finally {
       setLoading(false);
@@ -81,7 +97,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    console.log('[AuthContext] useEffect triggered - fetchPatched:', fetchPatched);
     if (typeof window !== 'undefined' && fetchPatched) {
+      console.log('[AuthContext] Calling fetchMe');
       fetchMe();
     }
   }, [fetchPatched, fetchMe]);
@@ -95,16 +113,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       const data = await res.json();
       console.log('AuthContext login response:', data);
+      console.log('AuthContext accessToken present:', !!data.accessToken);
       if (!res.ok) return { success: false, error: data.error || 'Login failed' };
 
       if (data.accessToken) {
         localStorage.setItem('token', data.accessToken);
+        console.log('AuthContext token stored in localStorage');
+        console.log('AuthContext token length:', data.accessToken.length);
+      } else {
+        console.error('AuthContext: No accessToken in response');
       }
 
       setUser(data.user || null);
       return { success: true, user: data.user };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
+      console.error('AuthContext login error:', errorMessage);
       return { success: false, error: errorMessage || 'Login failed' };
     }
   }

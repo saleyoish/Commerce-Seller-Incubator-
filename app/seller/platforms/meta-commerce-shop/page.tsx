@@ -26,11 +26,15 @@ export default function MetaCommerceShopPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
+  const [isAutoReauth, setIsAutoReauth] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     accessToken: '',
   });
+  const [directToken, setDirectToken] = useState('');
+  const [isConnecting, setIsConnecting] = useState(false);
 
   useEffect(() => {
     // Check for OAuth callback
@@ -55,17 +59,143 @@ export default function MetaCommerceShopPage() {
     });
   }, []);
 
+  const validateConnection = async (conn: PlatformConnection) => {
+    if (!conn) return;
+    
+    setIsValidating(true);
+    try {
+      const response = await fetch('/api/meta/validate-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ connectionId: conn.id }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('Validation error:', data.error);
+        return;
+      }
+
+      if (!data.valid) {
+        console.log('Token invalid, attempting refresh...');
+        
+        // Try to refresh the token
+        const refreshResponse = await fetch('/api/meta/refresh-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ connectionId: conn.id }),
+        });
+
+        const refreshData = await refreshResponse.json();
+
+        if (refreshData.success) {
+          console.log('Token refreshed successfully');
+          setSuccess('Meta connection refreshed and validated successfully.');
+          
+          // Reload connection to get updated token
+          const dbClient = createClientSideSupabase();
+          const { data: updatedConnection } = await dbClient
+            .from('platform_connections')
+            .select('*')
+            .eq('id', conn.id)
+            .single();
+
+          if (updatedConnection) {
+            setConnection(updatedConnection);
+          }
+        } else if (refreshData.needsReauth) {
+          console.log('Token refresh failed, needs re-authorization');
+          setError('Your Meta authorization has expired. Please re-authorize to continue.');
+          
+          // Auto-trigger re-authorization after a short delay
+          setIsAutoReauth(true);
+          setTimeout(() => {
+            handleAuthConnect();
+            setIsAutoReauth(false);
+          }, 2000);
+        } else {
+          console.error('Token refresh failed:', refreshData.error);
+          setError(`Token validation failed: ${refreshData.error}`);
+        }
+      } else {
+        console.log('Token is valid');
+        setSuccess('Meta connection is active and validated.');
+      }
+    } catch (error) {
+      console.error('Error validating connection:', error);
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
   const loadData = async () => {
     try {
-      const res = await fetch('/api/auth/check-user', { credentials: 'omit' });
-      if (!res.ok) { router.push('/login'); return; }
+      setIsLoading(true);
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/auth/me', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) { 
+        console.error('Auth check failed:', res.status);
+        router.push('/login'); 
+        return; 
+      }
       const userData = await res.json();
-      if (!userData.user) { router.push('/login'); return; }
+      if (!userData.id) { 
+        console.error('No user data found');
+        router.push('/login'); 
+        return; 
+      }
       const dbClient = createClientSideSupabase();
-      const { data: sellerData } = await dbClient.from('sellers').select('*').eq('user_id', userData.user.id).maybeSingle();
+      const { data: sellerData, error: sellerError } = await dbClient.from('sellers').select('*').eq('id', userData.id).maybeSingle();
+      
+      if (sellerError) {
+        console.error('Error fetching seller:', sellerError);
+      }
+      
+      console.log('Seller data:', sellerData);
       setSeller(sellerData);
 
       if (sellerData) {
+        console.log('loadData: Seller found, seller.id:', sellerData.id);
+        
+        // Use API endpoint to get connection (bypasses RLS)
+        const connectionRes = await fetch('/api/facebook/get-connection', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        
+        console.log('loadData: Connection response status:', connectionRes.status);
+        
+        if (connectionRes.ok) {
+          const connectionData = await connectionRes.json();
+          console.log('loadData: Meta connection from API:', connectionData.connection);
+          
+          if (connectionData.connection) {
+            console.log('loadData: Setting connection state');
+            setConnection(connectionData.connection);
+            setFormData({
+              accessToken: '',
+            });
+            setSuccess('Meta Commerce Shop connected successfully.');
+            
+            // Auto-validate the connection
+            validateConnection(connectionData.connection);
+            setIsLoading(false);
+            return;
+          }
+        } else {
+          console.error('loadData: Error fetching connection from API:', connectionRes.status);
+          const errorData = await connectionRes.json();
+          console.error('loadData: Error data:', errorData);
+        }
+
+        // No connection found from API, clear connection state
+        console.log('loadData: No connection found, clearing state');
+        setConnection(null);
+        setSuccess(null);
+        console.log('No Meta connection found, connection state cleared');
+
         // Try to load existing facebook or instagram connection and migrate it to meta
         const { data: fbConnection } = await dbClient
           .from('platform_connections')
@@ -81,22 +211,11 @@ export default function MetaCommerceShopPage() {
           .eq('platform', 'instagram')
           .maybeSingle();
 
-        const { data: metaConnection } = await dbClient
-          .from('platform_connections')
-          .select('*')
-          .eq('seller_id', sellerData.id)
-          .eq('platform', 'meta')
-          .maybeSingle();
+        console.log('FB connection:', fbConnection);
+        console.log('Instagram connection:', instaConnection);
 
-        // If meta connection exists, use it
-        if (metaConnection) {
-          setConnection(metaConnection);
-          setFormData({
-            accessToken: '',
-          });
-        }
-        // Otherwise migrate facebook or instagram connection to meta
-        else if (fbConnection) {
+        // Migrate facebook connection to meta
+        if (fbConnection) {
           const migrated = await dbClient
             .from('platform_connections')
             .update({ platform: 'meta' })
@@ -106,8 +225,11 @@ export default function MetaCommerceShopPage() {
           if (migrated.data) {
             setConnection(migrated.data);
             setFormData({ accessToken: '' });
+            setSuccess('Meta Commerce Shop connected successfully.');
+            validateConnection(migrated.data);
           }
         }
+        // Migrate instagram connection to meta
         else if (instaConnection) {
           const migrated = await dbClient
             .from('platform_connections')
@@ -118,6 +240,8 @@ export default function MetaCommerceShopPage() {
           if (migrated.data) {
             setConnection(migrated.data);
             setFormData({ accessToken: '' });
+            setSuccess('Meta Commerce Shop connected successfully.');
+            validateConnection(migrated.data);
           }
         }
       }
@@ -131,8 +255,10 @@ export default function MetaCommerceShopPage() {
 
   const handleSave = async () => {
     if (!seller) return;
+    
+    // If no token is present, trigger OAuth flow instead
     if (!formData.accessToken && !connection?.access_token) {
-      setError('Meta access token is required to connect.');
+      handleAuthConnect();
       return;
     }
 
@@ -174,42 +300,103 @@ export default function MetaCommerceShopPage() {
   };
 
   const handleAuthConnect = async () => {
+    console.log('handleAuthConnect called');
+    
+    // Check if already connected to prevent unnecessary OAuth
+    if (connection) {
+      console.log('Already connected, skipping OAuth');
+      setSuccess('Meta Commerce Shop is already connected.');
+      return;
+    }
+    
     setError(null);
     try {
+      console.log('Fetching auth URL from /api/facebook/auth');
+      
+      // Get JWT token from localStorage
+      const token = localStorage.getItem('token');
+      console.log('JWT token present:', !!token);
+      
+      if (!token) {
+        throw new Error('You must be logged in to connect with Meta');
+      }
+      
       const response = await fetch('/api/facebook/auth', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token }),
       });
 
+      console.log('Response status:', response.status);
       const data = await response.json();
+      console.log('Response data:', data);
 
       if (!response.ok || !data.authUrl) {
         throw new Error(data.error || 'Failed to get Meta auth URL');
       }
 
-      // Open popup for OAuth
-      const width = 600;
-      const height = 700;
-      const left = (window.innerWidth - width) / 2;
-      const top = (window.innerHeight - height) / 2;
-      
-      const popup = window.open(
-        data.authUrl,
-        'meta-auth',
-        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
-      );
-
-      // Poll for popup closure
-      const checkClosed = setInterval(() => {
-        if (popup?.closed) {
-          clearInterval(checkClosed);
-          // Reload data to check if connection was established
-          loadData();
-        }
-      }, 1000);
+      console.log('Redirecting to Meta OAuth');
+      // Use redirect instead of popup to avoid browser blocking
+      window.location.href = data.authUrl;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to initiate Meta OAuth';
       console.error('Auth error:', error);
       setError(message);
+    }
+  };
+
+  const handleDirectTokenConnect = async () => {
+    console.log('handleDirectTokenConnect called');
+    
+    if (!formData.accessToken.trim()) {
+      setError('Please enter your Meta access token');
+      return;
+    }
+    
+    setError(null);
+    setIsConnecting(true);
+    
+    try {
+      // Get JWT token from localStorage
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        throw new Error('You must be logged in to connect with Meta');
+      }
+      
+      const response = await fetch('/api/facebook/connect-direct', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ accessToken: formData.accessToken }),
+      });
+
+      const data = await response.json();
+      console.log('Direct connect response:', data);
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to connect with Meta');
+      }
+      
+      // Clear form and show success
+      setFormData({ accessToken: '' });
+      setSuccess('Meta connected successfully!');
+      
+      // Force reload connection data from database
+      console.log('Reloading connection data from database...');
+      await loadData();
+      
+      console.log('Connection data reloaded');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to connect with Meta';
+      console.error('Direct token connect error:', error);
+      setError(message);
+    } finally {
+      setIsConnecting(false);
     }
   };
 
@@ -235,6 +422,10 @@ export default function MetaCommerceShopPage() {
     }
   };
 
+  const handleReauthorize = async () => {
+    handleAuthConnect();
+  };
+
   const handleSyncProducts = async () => {
     if (!connection || !seller) return;
     setIsSyncing(true);
@@ -242,28 +433,33 @@ export default function MetaCommerceShopPage() {
     setSuccess(null);
 
     try {
-      const response = await fetch(`/api/facebook/sync-products?sellerId=${seller.id}`, {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/facebook/sync-products', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
       });
 
       const data = await response.json();
+      console.log('Sync products response:', data);
 
       if (!response.ok) {
         console.error('Full error response:', data);
         throw new Error(data.error || 'Failed to sync products');
       }
 
-      // Reload connection to get updated sync timestamp
-      const supabase = createClientSideSupabase();
-      const { data: updatedConnection } = await supabase
-        .from('platform_connections')
-        .select('*')
-        .eq('id', connection.id)
-        .single();
-
-      if (updatedConnection) {
-        setConnection(updatedConnection);
+      // Reload connection using API to get updated sync timestamp
+      const connectionRes = await fetch('/api/facebook/get-connection', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      
+      if (connectionRes.ok) {
+        const connectionData = await connectionRes.json();
+        if (connectionData.connection) {
+          setConnection(connectionData.connection);
+        }
       }
 
       setSuccess(`✓ ${data.syncedCount} products synced successfully from Meta Commerce Shop`);
@@ -319,6 +515,18 @@ export default function MetaCommerceShopPage() {
 
           {connection ? (
             <div className="space-y-4">
+              {isAutoReauth && (
+                <Alert>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <AlertDescription>Automatically re-authorizing your Meta connection...</AlertDescription>
+                </Alert>
+              )}
+              {isValidating && (
+                <Alert>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <AlertDescription>Validating your Meta connection...</AlertDescription>
+                </Alert>
+              )}
               <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-4">
                 <div className="flex items-center gap-2 text-blue-700 font-medium">
                   <CheckCircle className="w-5 h-5" />
@@ -326,55 +534,73 @@ export default function MetaCommerceShopPage() {
                 </div>
                 <p className="text-sm text-blue-700 mt-2">Account: {connection.platform_username || connection.metadata?.pageName || 'Authenticated'}</p>
                 <p className="text-sm text-gray-600">Last sync: {connection.metadata?.last_product_sync_at ? new Date(connection.metadata.last_product_sync_at).toLocaleString() : 'Never'}</p>
+                {connection.metadata?.last_validated_at && (
+                  <p className="text-sm text-gray-600">Last validated: {new Date(connection.metadata.last_validated_at).toLocaleString()}</p>
+                )}
+                {connection.metadata?.last_refreshed_at && (
+                  <p className="text-sm text-green-600">Token refreshed: {new Date(connection.metadata.last_refreshed_at).toLocaleString()}</p>
+                )}
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <Button variant="secondary" onClick={handleSyncProducts} disabled={isSyncing}>
                   {isSyncing ? 'Syncing...' : 'Sync Products'}
                 </Button>
+                <Button variant="outline" onClick={handleReauthorize} className="gap-2">
+                  <MetaIcon className="w-4 h-4" />
+                  Reauthorize
+                </Button>
                 <Button variant="destructive" onClick={handleDisconnect}>
-                  Disconnect Shop
+                  Disconnect
                 </Button>
               </div>
             </div>
           ) : null}
 
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Meta Access Token</label>
-              <Input
-                type="password"
-                placeholder="Paste your Meta API access token"
-                value={formData.accessToken}
-                onChange={(e) => setFormData({ ...formData, accessToken: e.target.value })}
-              />
-              <p className="text-xs text-gray-500 mt-1">Use an access token to connect Meta Commerce Shop via auth.</p>
+          {!connection && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Meta Access Token</label>
+                <Input
+                  type="password"
+                  placeholder="Paste your Meta API access token"
+                  value={formData.accessToken}
+                  onChange={(e) => setFormData({ ...formData, accessToken: e.target.value })}
+                />
+                <p className="text-xs text-gray-500 mt-1">Use an access token to connect Meta Commerce Shop via auth.</p>
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="flex flex-col gap-3 sm:flex-row">
-            <Button onClick={handleAuthConnect} variant="outline" className="gap-2">
-              <MetaIcon className="w-4 h-4" />
-              Authorize with Meta
-            </Button>
-            <Button onClick={handleSave} disabled={isSaving || (!formData.accessToken && !connection?.access_token)}>
-              {isSaving ? 'Saving...' : connection ? 'Update Connection' : 'Connect Meta Commerce Shop'}
-            </Button>
+            {!connection && (
+              <Button onClick={handleDirectTokenConnect} disabled={isConnecting} className="gap-2">
+                {isConnecting ? 'Connecting...' : 'Connect with Token'}
+              </Button>
+            )}
+            {!connection && (
+              <Button onClick={handleAuthConnect} variant="outline" className="gap-2">
+                <MetaIcon className="w-4 h-4" />
+                Authorize with Meta
+              </Button>
+            )}
             <Link href="https://business.facebook.com/commerce" target="_blank" className="inline-flex items-center justify-center gap-2 text-sm text-blue-600 hover:underline">
               <ExternalLink className="w-4 h-4" />
               Meta Commerce Manager
             </Link>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
-            <p className="text-sm text-blue-800 font-medium mb-2">Need help with authorization?</p>
-            <p className="text-sm text-blue-700 mb-2">If you see a domain error during authorization, you can use the manual access token method instead:</p>
-            <ol className="text-sm text-blue-700 list-decimal list-inside space-y-1">
-              <li>Go to <Link href="https://developers.facebook.com/tools/explorer/" target="_blank" className="text-blue-600 hover:underline">Facebook Graph API Explorer</Link></li>
-              <li>Select your app and generate a short-lived access token</li>
-              <li>Paste the token in the field above and click "Connect Meta Commerce Shop"</li>
-            </ol>
-          </div>
+          {!connection && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+              <p className="text-sm text-blue-800 font-medium mb-2">Need help with authorization?</p>
+              <p className="text-sm text-blue-700 mb-2">If you see a domain error during authorization, you can use the manual access token method instead:</p>
+              <ol className="text-sm text-blue-700 list-decimal list-inside space-y-1">
+                <li>Go to <Link href="https://developers.facebook.com/tools/explorer/" target="_blank" className="text-blue-600 hover:underline">Facebook Graph API Explorer</Link></li>
+                <li>Select your app and generate a short-lived access token</li>
+                <li>Paste the token in the field above and click "Connect Meta Commerce Shop"</li>
+              </ol>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
