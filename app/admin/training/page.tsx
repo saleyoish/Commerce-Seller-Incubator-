@@ -1,5 +1,6 @@
-import { createServerSideSupabase } from "@/lib/supabase-server";
-import { redirect } from "next/navigation";
+"use client";
+
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +20,7 @@ import {
   AlertCircle,
   Clock,
   TrendingUp,
+  Loader2,
 } from "lucide-react";
 
 const modules = [
@@ -32,106 +34,73 @@ const modules = [
   "faq",
 ];
 
-async function getTrainingAnalytics() {
-  const supabase = await createServerSideSupabase();
+export default function TrainingAdminPage() {
+  const [sellerProgress, setSellerProgress] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [moduleStats, setModuleStats] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Check if user is admin
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  useEffect(() => {
+    loadTrainingData();
+  }, []);
 
-  if (!user) {
-    return { error: "Not authenticated" };
-  }
+  const loadTrainingData = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/admin/training', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-  const { data: admin } = await supabase
-    .from("admins")
-    .select("id")
-    .eq("user_id", user.id)
-    .single();
+      if (!res.ok) {
+        const result = await res.json();
+        throw new Error(result.error || 'Failed to load training data');
+      }
 
-  if (!admin) {
-    return { error: "Not authorized" };
-  }
-
-  // Fetch all sellers with their training progress
-  const { data: sellers, error: sellersError } = await supabase
-    .from("sellers")
-    .select("id, email, created_at")
-    .order("created_at", { ascending: false });
-
-  if (sellersError) {
-    console.error("Error fetching sellers:", sellersError);
-    return { error: "Failed to fetch sellers" };
-  }
-
-  // Fetch all training progress
-  const { data: progress, error: progressError } = await supabase
-    .from("training_progress")
-    .select("*")
-    .eq("completed", true);
-
-  if (progressError) {
-    console.error("Error fetching progress:", progressError);
-  }
-
-  // Calculate seller progress
-  const sellerProgress = sellers.map((seller) => {
-    const completed =
-      progress?.filter((p) => p.seller_id === seller.id).length || 0;
-    return {
-      ...seller,
-      completed,
-      percentage: Math.round((completed / modules.length) * 100),
-    };
-  });
-
-  // Calculate stats
-  const stats = {
-    totalSellers: sellers.length,
-    completedTraining: sellerProgress.filter((s) => s.percentage === 100).length,
-    inProgress: sellerProgress.filter(
-      (s) => s.percentage > 0 && s.percentage < 100
-    ).length,
-    notStarted: sellerProgress.filter((s) => s.percentage === 0).length,
-    averageProgress:
-      sellerProgress.length > 0
-        ? Math.round(
-            sellerProgress.reduce((sum, s) => sum + s.percentage, 0) /
-              sellerProgress.length
-          )
-        : 0,
+      const data = await res.json();
+      setSellerProgress(data.sellerProgress || []);
+      setStats(data.stats);
+      setModuleStats(data.moduleStats || []);
+    } catch (err: any) {
+      console.error('Error loading training data:', err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // Get module completion stats
-  const moduleStats = modules.map((moduleId) => {
-    const completed =
-      progress?.filter((p) => p.module_id === moduleId).length || 0;
-    return {
-      id: moduleId,
-      completed,
-      percentage:
-        sellers.length > 0 ? Math.round((completed / sellers.length) * 100) : 0,
-    };
-  });
+  const handleSendReminder = async (email: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/email/training-reminder', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ email }),
+      });
 
-  return {
-    sellerProgress,
-    stats,
-    moduleStats,
+      if (!res.ok) {
+        const result = await res.json();
+        throw new Error(result.error || 'Failed to send reminder');
+      }
+
+      alert('Reminder sent successfully');
+    } catch (err: any) {
+      console.error('Error sending reminder:', err);
+      alert(err.message);
+    }
   };
-}
 
-export default async function TrainingAdminPage() {
-  const { sellerProgress, stats, moduleStats, error } =
-    await getTrainingAnalytics();
-
-  if (error === "Not authenticated") {
-    redirect("/login");
-  }
-
-  if (error === "Not authorized") {
-    redirect("/dashboard");
+  if (isLoading) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
   }
 
   if (error) {
@@ -303,17 +272,14 @@ export default async function TrainingAdminPage() {
                     </TableCell>
                     <TableCell>
                       {seller.percentage < 100 && seller.percentage > 0 && (
-                        <form action="/api/email/training-reminder" method="POST">
-                          <input type="hidden" name="email" value={seller.email} />
-                          <Button
-                            type="submit"
-                            size="sm"
-                            variant="outline"
-                            className="text-blue-600 hover:bg-blue-50"
-                          >
-                            Send Reminder
-                          </Button>
-                        </form>
+                        <Button
+                          onClick={() => handleSendReminder(seller.email)}
+                          size="sm"
+                          variant="outline"
+                          className="text-blue-600 hover:bg-blue-50"
+                        >
+                          Send Reminder
+                        </Button>
                       )}
                     </TableCell>
                   </TableRow>

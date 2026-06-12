@@ -1,12 +1,33 @@
 import { db } from "@/lib/db";
+import { verifyJWT } from "@/lib/jwt";
 import { NextResponse } from "next/server";
 import { hashPassword, generateTempPassword } from "@/lib/password";
 import { v4 as uuidv4 } from "uuid";
 
 export async function POST(request: Request) {
   try {
-    const formData = await request.formData();
-    const id = formData.get("id") as string;
+    const token = request.headers.get('authorization')?.replace('Bearer ', '');
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const decoded = await verifyJWT(token);
+    if (!decoded || !decoded.userId) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    // Verify user is admin
+    const { data: admin } = await db
+      .from('admins')
+      .select('id')
+      .eq('id', decoded.userId)
+      .maybeSingle();
+
+    if (!admin) {
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    }
+
+    const { id } = await request.json();
 
     if (!id) {
       return NextResponse.json(
@@ -98,9 +119,7 @@ export async function POST(request: Request) {
       console.error("Failed to send approval email:", e);
     }
 
-    return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_SITE_URL}/admin/waitlist?success=true`
-    );
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Approve waitlist error:", error);
     return NextResponse.json(

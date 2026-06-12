@@ -1,5 +1,6 @@
-import { createServerSideSupabase } from "@/lib/supabase-server";
-import { redirect } from "next/navigation";
+"use client";
+
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,66 +19,97 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { CheckCircle, XCircle, FileText, Eye, Users } from "lucide-react";
+import { CheckCircle, XCircle, FileText, Eye, Users, Loader2 } from "lucide-react";
 
-async function getApplicationsData() {
-  const supabase = await createServerSideSupabase();
+export default function ApplicationsAdminPage() {
+  const [applications, setApplications] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Check if user is admin
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  useEffect(() => {
+    loadApplicationsData();
+  }, []);
 
-  if (!user) {
-    return { error: "Not authenticated" };
-  }
+  const loadApplicationsData = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/admin/applications', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-  const { data: admin } = await supabase
-    .from("admins")
-    .select("id")
-    .eq("user_id", user.id)
-    .single();
+      if (!res.ok) {
+        const result = await res.json();
+        throw new Error(result.error || 'Failed to load applications');
+      }
 
-  if (!admin) {
-    return { error: "Not authorized" };
-  }
-
-  // Fetch applications with waitlist data
-  const { data: applications, error } = await supabase
-    .from("applications")
-    .select(`
-      *,
-      waitlist:waitlist_id (name, email)
-    `)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error("Error fetching applications:", error);
-    return { error: "Failed to fetch applications" };
-  }
-
-  // Get stats
-  const stats = {
-    total: applications?.length || 0,
-    pending: applications?.filter((a) => a.status === "pending").length || 0,
-    approved: applications?.filter((a) => a.status === "approved").length || 0,
-    rejected: applications?.filter((a) => a.status === "rejected").length || 0,
-    interview:
-      applications?.filter((a) => a.status === "interview").length || 0,
+      const data = await res.json();
+      setApplications(data.applications || []);
+      setStats(data.stats);
+    } catch (err: any) {
+      console.error('Error loading applications:', err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  return { applications: applications || [], stats };
-}
+  const handleApprove = async (id: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/admin/applications/approve', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ id }),
+      });
 
-export default async function ApplicationsAdminPage() {
-  const { applications, stats, error } = await getApplicationsData();
+      if (!res.ok) {
+        const result = await res.json();
+        throw new Error(result.error || 'Failed to approve');
+      }
 
-  if (error === "Not authenticated") {
-    redirect("/login");
-  }
+      await loadApplicationsData();
+    } catch (err: any) {
+      console.error('Error approving:', err);
+      alert(err.message);
+    }
+  };
 
-  if (error === "Not authorized") {
-    redirect("/dashboard");
+  const handleReject = async (id: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/admin/applications/reject', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ id }),
+      });
+
+      if (!res.ok) {
+        const result = await res.json();
+        throw new Error(result.error || 'Failed to reject');
+      }
+
+      await loadApplicationsData();
+    } catch (err: any) {
+      console.error('Error rejecting:', err);
+      alert(err.message);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
   }
 
   if (error) {
@@ -341,35 +373,23 @@ export default async function ApplicationsAdminPage() {
 
                         {app.status === "pending" && (
                           <>
-                            <form
-                              action="/api/admin/applications/approve"
-                              method="POST"
+                            <Button
+                              onClick={() => handleApprove(app.id)}
+                              size="sm"
+                              variant="outline"
+                              className="text-green-600 hover:bg-green-50"
                             >
-                              <input type="hidden" name="id" value={app.id} />
-                              <Button
-                                type="submit"
-                                size="sm"
-                                variant="outline"
-                                className="text-green-600 hover:bg-green-50"
-                              >
-                                <CheckCircle className="w-4 h-4" />
-                              </Button>
-                            </form>
+                              <CheckCircle className="w-4 h-4" />
+                            </Button>
 
-                            <form
-                              action="/api/admin/applications/reject"
-                              method="POST"
+                            <Button
+                              onClick={() => handleReject(app.id)}
+                              size="sm"
+                              variant="outline"
+                              className="text-red-600 hover:bg-red-50"
                             >
-                              <input type="hidden" name="id" value={app.id} />
-                              <Button
-                                type="submit"
-                                size="sm"
-                                variant="outline"
-                                className="text-red-600 hover:bg-red-50"
-                              >
-                                <XCircle className="w-4 h-4" />
-                              </Button>
-                            </form>
+                              <XCircle className="w-4 h-4" />
+                            </Button>
                           </>
                         )}
                       </div>

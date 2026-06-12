@@ -1,5 +1,6 @@
-import { createServerSideSupabase } from "@/lib/supabase-server";
-import { redirect } from "next/navigation";
+"use client";
+
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,88 +21,76 @@ import {
   XCircle,
   AlertCircle,
   ExternalLink,
+  Loader2,
 } from "lucide-react";
 
-async function getTikTokData() {
-  const supabase = await createServerSideSupabase();
+export default function TikTokAdminPage() {
+  const [connections, setConnections] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [recentSyncs, setRecentSyncs] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Check if user is admin
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  useEffect(() => {
+    loadTikTokData();
+  }, []);
 
-  if (!user) {
-    return { error: "Not authenticated" };
-  }
+  const loadTikTokData = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/admin/tiktok', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-  const { data: admin } = await supabase
-    .from("admins")
-    .select("id")
-    .eq("user_id", user.id)
-    .single();
+      if (!res.ok) {
+        const result = await res.json();
+        throw new Error(result.error || 'Failed to load TikTok data');
+      }
 
-  if (!admin) {
-    return { error: "Not authorized" };
-  }
-
-  // Get all TikTok connections
-  const { data: connections, error: connError } = await supabase
-    .from("tiktok_shop_connections")
-    .select(`
-      *,
-      seller:seller_id (email)
-    `)
-    .order("created_at", { ascending: false });
-
-  if (connError) {
-    console.error("Error fetching connections:", connError);
-  }
-
-  // Get stats
-  const { data: tiktokProducts } = await supabase
-    .from("tiktok_products")
-    .select("sync_status");
-
-  const { data: tiktokOrders } = await supabase
-    .from("tiktok_orders")
-    .select("order_status");
-
-  const { data: recentSyncs } = await supabase
-    .from("tiktok_sync_logs")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(10);
-
-  const stats = {
-    totalConnections: connections?.length || 0,
-    activeConnections:
-      connections?.filter((c) => c.is_connected).length || 0,
-    totalProducts: tiktokProducts?.length || 0,
-    syncedProducts:
-      tiktokProducts?.filter((p) => p.sync_status === "synced").length || 0,
-    totalOrders: tiktokOrders?.length || 0,
-    pendingOrders:
-      tiktokOrders?.filter(
-        (o) => o.order_status === "unpaid" || o.order_status === "awaiting_shipment"
-      ).length || 0,
+      const data = await res.json();
+      setConnections(data.connections || []);
+      setStats(data.stats);
+      setRecentSyncs(data.recentSyncs || []);
+    } catch (err: any) {
+      console.error('Error loading TikTok data:', err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  return {
-    connections: connections || [],
-    stats,
-    recentSyncs: recentSyncs || [],
+  const handleSync = async (sellerId: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/admin/tiktok/sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ sellerId }),
+      });
+
+      if (!res.ok) {
+        const result = await res.json();
+        throw new Error(result.error || 'Failed to sync');
+      }
+
+      await loadTikTokData();
+    } catch (err: any) {
+      console.error('Error syncing:', err);
+      alert(err.message);
+    }
   };
-}
 
-export default async function TikTokAdminPage() {
-  const { connections, stats, recentSyncs, error } = await getTikTokData();
-
-  if (error === "Not authenticated") {
-    redirect("/login");
-  }
-
-  if (error === "Not authorized") {
-    redirect("/dashboard");
+  if (isLoading) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
   }
 
   if (error) {
@@ -224,12 +213,13 @@ export default async function TikTokAdminPage() {
                       <div className="flex gap-2">
                         {conn.is_connected && (
                           <>
-                            <form action="/api/admin/tiktok/sync" method="POST">
-                              <input type="hidden" name="sellerId" value={conn.seller_id} />
-                              <Button type="submit" size="sm" variant="outline">
-                                <RefreshCw className="w-4 h-4" />
-                              </Button>
-                            </form>
+                            <Button
+                              onClick={() => handleSync(conn.seller_id)}
+                              size="sm"
+                              variant="outline"
+                            >
+                              <RefreshCw className="w-4 h-4" />
+                            </Button>
                             <a
                               href={`https://seller-us.tiktok.com/shop/${conn.tiktok_shop_id}`}
                               target="_blank"

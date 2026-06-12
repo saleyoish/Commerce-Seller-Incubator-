@@ -1,5 +1,6 @@
-import { createServerSideSupabase } from "@/lib/supabase-server";
-import { redirect } from "next/navigation";
+"use client";
+
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,63 +12,73 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CheckCircle, XCircle, Mail, Users } from "lucide-react";
+import { CheckCircle, XCircle, Mail, Users, Loader2 } from "lucide-react";
 
-async function getWaitlistData() {
-  const supabase = await createServerSideSupabase();
+export default function WaitlistAdminPage() {
+  const [waitlist, setWaitlist] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Check if user is admin
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  useEffect(() => {
+    loadWaitlistData();
+  }, []);
 
-  if (!user) {
-    return { error: "Not authenticated" };
-  }
+  const loadWaitlistData = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/admin/waitlist', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-  const { data: admin } = await supabase
-    .from("admins")
-    .select("id")
-    .eq("user_id", user.id)
-    .single();
+      if (!res.ok) {
+        const result = await res.json();
+        throw new Error(result.error || 'Failed to load waitlist');
+      }
 
-  if (!admin) {
-    return { error: "Not authorized" };
-  }
-
-  // Fetch waitlist data
-  const { data: waitlist, error } = await supabase
-    .from("waitlist")
-    .select("*")
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error("Error fetching waitlist:", error);
-    return { error: "Failed to fetch waitlist" };
-  }
-
-  // Get stats
-  const stats = {
-    total: waitlist?.length || 0,
-    pending: waitlist?.filter((w) => w.status === "pending").length || 0,
-    approved: waitlist?.filter((w) => w.status === "approved").length || 0,
-    contacted: waitlist?.filter((w) => w.status === "contacted").length || 0,
-    withExperience:
-      waitlist?.filter((w) => w.has_live_experience).length || 0,
+      const data = await res.json();
+      setWaitlist(data.waitlist || []);
+      setStats(data.stats);
+    } catch (err: any) {
+      console.error('Error loading waitlist:', err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  return { waitlist: waitlist || [], stats };
-}
+  const handleApprove = async (id: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/admin/waitlist/approve', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ id }),
+      });
 
-export default async function WaitlistAdminPage() {
-  const { waitlist, stats, error } = await getWaitlistData();
+      if (!res.ok) {
+        const result = await res.json();
+        throw new Error(result.error || 'Failed to approve');
+      }
 
-  if (error === "Not authenticated") {
-    redirect("/login");
-  }
+      await loadWaitlistData();
+    } catch (err: any) {
+      console.error('Error approving:', err);
+      alert(err.message);
+    }
+  };
 
-  if (error === "Not authorized") {
-    redirect("/dashboard");
+  if (isLoading) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
   }
 
   if (error) {
@@ -206,17 +217,14 @@ export default async function WaitlistAdminPage() {
                     <TableCell>
                       <div className="flex gap-2">
                         {entry.status === "pending" && (
-                          <form action="/api/admin/waitlist/approve" method="POST">
-                            <input type="hidden" name="id" value={entry.id} />
-                            <Button
-                              type="submit"
-                              size="sm"
-                              variant="outline"
-                              className="text-green-600 hover:bg-green-50"
-                            >
-                              <CheckCircle className="w-4 h-4" />
-                            </Button>
-                          </form>
+                          <Button
+                            onClick={() => handleApprove(entry.id)}
+                            size="sm"
+                            variant="outline"
+                            className="text-green-600 hover:bg-green-50"
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                          </Button>
                         )}
                         <Button
                           size="sm"
