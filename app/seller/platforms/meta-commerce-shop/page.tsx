@@ -205,6 +205,7 @@ export default function MetaCommerceShopPage() {
         console.log('No Meta connection found, connection state cleared');
 
         // Try to load existing facebook or instagram connection and migrate it to meta
+        const dbClient = createClientSideSupabase();
         const { data: fbConnection } = await dbClient
           .from('platform_connections')
           .select('*')
@@ -597,7 +598,7 @@ export default function MetaCommerceShopPage() {
               </Button>
             )}
             {!connection && (
-              <Button onClick={handleAuthConnect} variant="outline" className="gap-2">
+              <Button onClick={() => handleAuthConnect()} variant="outline" className="gap-2">
                 <MetaIcon className="w-4 h-4" />
                 Authorize with Meta
               </Button>

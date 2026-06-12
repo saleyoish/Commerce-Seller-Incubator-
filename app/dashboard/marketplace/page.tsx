@@ -10,8 +10,7 @@ import {
   Unlink,
   ShoppingBag,
   Store,
-  Facebook,
-  Instagram
+  Globe
 } from "lucide-react";
 
 interface ConnectionStatus {
@@ -173,7 +172,7 @@ export default function MarketplacePage() {
     {
       name: "Meta Commerce",
       platform: "meta",
-      icon: <Facebook className="w-5 h-5" />,
+      icon: <Globe className="w-5 h-5" />,
       color: "bg-blue-600",
       status: statuses.meta || {
         connected: false,
