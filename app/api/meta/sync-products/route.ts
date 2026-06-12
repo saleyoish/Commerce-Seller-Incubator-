@@ -1,5 +1,6 @@
-import { createAdminSupabase } from "@/lib/supabase-admin";
 import { fetchCatalogProducts, updateCatalogProduct } from "@/lib/meta-service";
+import { verifyJWT, extractToken } from "@/lib/jwt";
+import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -15,10 +16,27 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabase = createAdminSupabase();
+    // Get JWT token from headers
+    const token = extractToken(request.headers);
+
+    if (!token) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
+    const payload = await verifyJWT(token);
+
+    if (!payload || payload.userId !== sellerId) {
+      return NextResponse.json(
+        { error: "Invalid token" },
+        { status: 401 }
+      );
+    }
 
     // Get seller's Meta connection
-    const { data: connection, error: connectionError } = await supabase
+    const { data: connection, error: connectionError } = await db
       .from("platform_connections")
       .select("*")
       .eq("seller_id", sellerId)
@@ -44,7 +62,7 @@ export async function POST(request: Request) {
     }
 
     // Create sync log entry
-    const { data: syncLogData, error: syncLogError } = await supabase
+    const { data: syncLogData, error: syncLogError } = await db
       .from("meta_sync_logs")
       .insert({
         seller_id: sellerId,
@@ -85,14 +103,14 @@ export async function POST(request: Request) {
             const metaSku = metaProduct.retailer_id || metaProduct.id;
 
             // Check if product already exists locally via SKU or Meta mapping
-            const { data: existingProductBySku } = await supabase
+            const { data: existingProductBySku } = await db
               .from("products")
               .select("id")
               .eq("seller_id", sellerId)
               .eq("sku", metaSku)
               .maybeSingle();
 
-            const { data: existingMetaProduct } = await supabase
+            const { data: existingMetaProduct } = await db
               .from("meta_products")
               .select("*")
               .eq("seller_id", sellerId)
@@ -118,14 +136,14 @@ export async function POST(request: Request) {
 
             if (existingProductBySku) {
               // Update existing local product by SKU
-              await supabase
+              await db
                 .from("products")
                 .update(productData)
                 .eq("id", existingProductBySku.id);
 
               // Update or create Meta mapping
               if (existingMetaProduct) {
-                await supabase
+                await db
                   .from("meta_products")
                   .update({
                     product_id: existingProductBySku.id,
@@ -143,7 +161,7 @@ export async function POST(request: Request) {
                   })
                   .eq("meta_product_id", metaProduct.id);
               } else {
-                await supabase.from("meta_products").insert({
+                await db.from("meta_products").insert({
                   seller_id: sellerId,
                   product_id: existingProductBySku.id,
                   meta_product_id: metaProduct.id,
@@ -162,12 +180,12 @@ export async function POST(request: Request) {
               }
             } else if (existingMetaProduct?.product_id) {
               // Update the local product and mapping when the product is already linked
-              await supabase
+              await db
                 .from("products")
                 .update(productData)
                 .eq("id", existingMetaProduct.product_id);
 
-              await supabase
+              await db
                 .from("meta_products")
                 .update({
                   title: metaProduct.name,
@@ -185,7 +203,7 @@ export async function POST(request: Request) {
                 .eq("meta_product_id", metaProduct.id);
             } else if (existingMetaProduct && !existingMetaProduct.product_id) {
               // If the mapping exists without a linked product, create a local product
-              const { data: newProduct, error: newProductError } = await supabase
+              const { data: newProduct, error: newProductError } = await db
                 .from("products")
                 .insert(productData)
                 .select()
@@ -195,7 +213,7 @@ export async function POST(request: Request) {
                 throw new Error(newProductError?.message || 'Failed to create local product');
               }
 
-              await supabase
+              await db
                 .from("meta_products")
                 .update({
                   product_id: newProduct.id,
@@ -214,7 +232,7 @@ export async function POST(request: Request) {
                 .eq("meta_product_id", metaProduct.id);
             } else {
               // Create new local product and mapping
-              const { data: newProduct, error: newProductError } = await supabase
+              const { data: newProduct, error: newProductError } = await db
                 .from("products")
                 .insert(productData)
                 .select()
@@ -224,7 +242,7 @@ export async function POST(request: Request) {
                 throw new Error(newProductError?.message || 'Failed to create local product');
               }
 
-              await supabase.from("meta_products").insert({
+              await db.from("meta_products").insert({
                 seller_id: sellerId,
                 product_id: newProduct.id,
                 meta_product_id: metaProduct.id,
@@ -256,7 +274,7 @@ export async function POST(request: Request) {
       }
     } else {
       // Push local products to Meta
-      const { data: products, error: productsError } = await supabase
+      const { data: products, error: productsError } = await db
         .from("products")
         .select("*")
         .eq("seller_id", sellerId)
@@ -279,7 +297,7 @@ export async function POST(request: Request) {
           const sellerSku = (product as any).sku || product.id;
 
           // Check if product already synced
-          const { data: existingMetaProduct } = await supabase
+          const { data: existingMetaProduct } = await db
             .from("meta_products")
             .select("meta_product_id")
             .eq("product_id", product.id)
@@ -300,7 +318,7 @@ export async function POST(request: Request) {
               }
             );
 
-            await supabase
+            await db
               .from("meta_products")
               .update({
                 title: product.name,
@@ -320,7 +338,7 @@ export async function POST(request: Request) {
             console.log('[Meta Sync] Product creation via batch API needed for:', product.id);
             
             // Record the mapping as pending
-            await supabase.from("meta_products").insert({
+            await db.from("meta_products").insert({
               seller_id: sellerId,
               product_id: product.id,
               meta_catalog_id: catalogId,
@@ -342,7 +360,7 @@ export async function POST(request: Request) {
           errors.push(`Product ${product.id}: ${errorMessage}`);
 
           // Update product sync status to failed
-          await supabase
+          await db
             .from("meta_products")
             .upsert({
               seller_id: sellerId,
@@ -357,7 +375,7 @@ export async function POST(request: Request) {
 
     // Update sync log if we were able to create one
     if (syncLogId) {
-      await supabase
+      await db
         .from("meta_sync_logs")
         .update({
           status: failCount > 0 ? "failed" : "completed",
@@ -371,7 +389,7 @@ export async function POST(request: Request) {
     }
 
     // Update last sync time on connection
-    await supabase
+    await db
       .from("platform_connections")
       .update({
         last_product_sync_at: new Date().toISOString(),

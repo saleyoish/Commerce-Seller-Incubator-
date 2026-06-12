@@ -207,56 +207,6 @@ export default function MetaCommerceShopPage() {
         setConnection(null);
         setSuccess(null);
         console.log('No Meta connection found, connection state cleared');
-
-        // Try to load existing facebook or instagram connection and migrate it to meta
-        const dbClient = createClientSideSupabase();
-        const { data: fbConnection } = await dbClient
-          .from('platform_connections')
-          .select('*')
-          .eq('seller_id', sellerData.id)
-          .eq('platform', 'facebook')
-          .maybeSingle();
-
-        const { data: instaConnection } = await dbClient
-          .from('platform_connections')
-          .select('*')
-          .eq('seller_id', sellerData.id)
-          .eq('platform', 'instagram')
-          .maybeSingle();
-
-        console.log('FB connection:', fbConnection);
-        console.log('Instagram connection:', instaConnection);
-
-        // Migrate facebook connection to meta
-        if (fbConnection) {
-          const migrated = await dbClient
-            .from('platform_connections')
-            .update({ platform: 'meta' })
-            .eq('id', fbConnection.id)
-            .select()
-            .single();
-          if (migrated.data) {
-            setConnection(migrated.data);
-            setFormData({ accessToken: '' });
-            setSuccess('Meta Commerce Shop connected successfully.');
-            validateConnection(migrated.data);
-          }
-        }
-        // Migrate instagram connection to meta
-        else if (instaConnection) {
-          const migrated = await dbClient
-            .from('platform_connections')
-            .update({ platform: 'meta' })
-            .eq('id', instaConnection.id)
-            .select()
-            .single();
-          if (migrated.data) {
-            setConnection(migrated.data);
-            setFormData({ accessToken: '' });
-            setSuccess('Meta Commerce Shop connected successfully.');
-            validateConnection(migrated.data);
-          }
-        }
       }
     } catch (error) {
       console.error('Failed to load Meta Commerce Shop:', error);

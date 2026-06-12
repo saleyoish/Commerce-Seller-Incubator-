@@ -1,5 +1,6 @@
-import { createAdminSupabase } from "@/lib/supabase-admin";
 import { exchangeShortLivedToken, fetchUserBusinesses, fetchOwnedCatalogs } from "@/lib/meta-service";
+import { verifyJWT } from "@/lib/jwt";
+import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
@@ -24,21 +25,35 @@ export async function GET(request: Request) {
       );
     }
 
-    // Decode state to get sellerId
+    // Decode state to get sellerId and JWT token
     let sellerId: string;
+    let jwtToken: string;
     try {
       const stateData = JSON.parse(Buffer.from(state, "base64").toString());
       sellerId = stateData.sellerId;
+      jwtToken = stateData.token;
     } catch {
       return NextResponse.redirect(
         `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard/marketplace?error=Invalid state parameter`
       );
     }
 
-    const supabase = createAdminSupabase();
+    // Verify JWT token
+    if (!jwtToken) {
+      return NextResponse.redirect(
+        `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard/marketplace?error=Missing authentication token`
+      );
+    }
+
+    const payload = await verifyJWT(jwtToken);
+    if (!payload || payload.userId !== sellerId) {
+      return NextResponse.redirect(
+        `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard/marketplace?error=Invalid authentication token`
+      );
+    }
 
     // Verify seller exists
-    const { data: seller } = await supabase
+    const { data: seller } = await db
       .from("sellers")
       .select("id, email")
       .eq("id", sellerId)
@@ -101,7 +116,7 @@ export async function GET(request: Request) {
       updated_at: new Date().toISOString(),
     };
 
-    const { data: existingConnection } = await supabase
+    const { data: existingConnection } = await db
       .from('platform_connections')
       .select('id')
       .eq('seller_id', sellerId)
@@ -109,12 +124,12 @@ export async function GET(request: Request) {
       .maybeSingle();
 
     if (existingConnection) {
-      await supabase
+      await db
         .from('platform_connections')
         .update(platformConnectionPayload)
         .eq('id', existingConnection.id);
     } else {
-      await supabase
+      await db
         .from('platform_connections')
         .insert(platformConnectionPayload);
     }
