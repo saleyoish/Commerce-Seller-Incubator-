@@ -24,13 +24,17 @@ export default function AuthGuard({
       const token = localStorage.getItem('token');
       const targetRedirect = `${redirectPath}?redirect=${encodeURIComponent(pathname || '/')}`;
 
+      console.log('[AuthGuard] Checking auth for:', pathname, 'requireAdmin:', requireAdmin, 'hasToken:', !!token);
+
       if (!token) {
+        console.log('[AuthGuard] No token found, redirecting to:', targetRedirect);
         router.replace(targetRedirect);
         return;
       }
 
       try {
         const endpoint = requireAdmin ? '/api/auth/check-admin' : '/api/auth/check-user';
+        console.log('[AuthGuard] Calling endpoint:', endpoint);
         const res = await fetch(endpoint, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -39,15 +43,19 @@ export default function AuthGuard({
           credentials: 'omit',
         });
 
+        console.log('[AuthGuard] Response status:', res.status);
         if (!res.ok) {
+          console.log('[AuthGuard] Response not OK, redirecting to:', targetRedirect);
           router.replace(targetRedirect);
           return;
         }
 
         const data = await res.json();
+        console.log('[AuthGuard] Response data:', data);
 
         if (requireAdmin) {
           if (!data.isAdmin) {
+            console.log('[AuthGuard] Not admin, redirecting to /seller');
             router.replace('/seller');
             return;
           }
@@ -56,7 +64,7 @@ export default function AuthGuard({
           setAuthorized(true);
         }
       } catch (error) {
-        console.error('AuthGuard error:', error);
+        console.error('[AuthGuard] error:', error);
         router.replace(targetRedirect);
       } finally {
         setIsLoading(false);

@@ -1,6 +1,6 @@
-import { createAdminSupabase } from "@/lib/supabase-admin";
-import { createServerSideSupabase } from "@/lib/supabase-server";
-import { redirect } from "next/navigation";
+"use client";
+
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,87 +12,75 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { DollarSign, Users, Trophy, CheckCircle } from "lucide-react";
+import { DollarSign, Users, Trophy, CheckCircle, Loader2 } from "lucide-react";
 
-async function getReferralsData() {
-  // Use admin client for referrals table to bypass RLS
-  const adminSupabase = createAdminSupabase();
-  const serverSupabase = await createServerSideSupabase();
+export default function ReferralsAdminPage() {
+  const [referrals, setReferrals] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [topReferrers, setTopReferrers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Check if user is admin
-  const {
-    data: { user },
-  } = await serverSupabase.auth.getUser();
+  useEffect(() => {
+    loadReferralsData();
+  }, []);
 
-  if (!user) {
-    return { error: "Not authenticated" };
-  }
+  const loadReferralsData = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/admin/referrals', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-  const { data: admin } = await serverSupabase
-    .from("admins")
-    .select("id")
-    .eq("user_id", user.id)
-    .single();
+      if (!res.ok) {
+        const result = await res.json();
+        throw new Error(result.error || 'Failed to load referrals');
+      }
 
-  if (!admin) {
-    return { error: "Not authorized" };
-  }
-
-  // Fetch all referrals with seller info using admin client
-  console.log("[Admin] Fetching all referrals...");
-  const { data: referrals, error } = await adminSupabase
-    .from("referrals")
-    .select(`
-      *,
-      referrer:referrer_id (email, referral_code)
-    `)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error("[Admin] Error fetching referrals:", error);
-    return { error: "Failed to fetch referrals: " + error.message };
-  }
-  
-  console.log("[Admin] Referrals fetched:", referrals?.length || 0, "records");
-  console.log("[Admin] First few referrals:", referrals?.slice(0, 3));
-
-  // Get top referrers using admin client
-  const { data: topReferrers } = await adminSupabase.rpc("get_top_referrers", {
-    limit_count: 10,
-  });
-
-  // Get stats
-  const stats = {
-    total: referrals?.length || 0,
-    approved:
-      referrals?.filter((r: any) => r.status === "approved").length || 0,
-    active: referrals?.filter((r: any) => r.status === "active").length || 0,
-    paid: referrals?.filter((r: any) => r.paid).length || 0,
-    pendingPayout:
-      referrals?.filter((r: any) => !r.paid && (r.status === "active" || r.status === "approved")).length || 0,
-    totalPaid:
-      referrals
-        ?.filter((r: any) => r.paid)
-        .reduce((sum: number, r: any) => sum + (r.bonus_amount || 0), 0) || 0,
-    totalPending:
-      referrals
-        ?.filter((r: any) => !r.paid && (r.status === "active" || r.status === "approved"))
-        .reduce((sum: number, r: any) => sum + (r.bonus_amount || 0), 0) || 0,
+      const data = await res.json();
+      setReferrals(data.referrals || []);
+      setStats(data.stats);
+      setTopReferrers(data.topReferrers || []);
+    } catch (err: any) {
+      console.error('Error loading referrals:', err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  console.log("[Admin] Returning stats:", stats);
-  return { referrals: referrals || [], stats, topReferrers: topReferrers || [] };
-}
+  const handleMarkPaid = async (id: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/admin/referrals/mark-paid', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ id }),
+      });
 
-export default async function ReferralsAdminPage() {
-  const { referrals, stats, topReferrers, error } = await getReferralsData();
+      if (!res.ok) {
+        const result = await res.json();
+        throw new Error(result.error || 'Failed to mark as paid');
+      }
 
-  if (error === "Not authenticated") {
-    redirect("/login");
-  }
+      await loadReferralsData();
+    } catch (err: any) {
+      console.error('Error marking as paid:', err);
+      alert(err.message);
+    }
+  };
 
-  if (error === "Not authorized") {
-    redirect("/dashboard");
+  if (isLoading) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
   }
 
   if (error) {
@@ -304,17 +292,14 @@ export default async function ReferralsAdminPage() {
                     </TableCell>
                     <TableCell>
                       {!referral.paid && referral.status === "active" && (
-                        <form action="/api/admin/referrals/mark-paid" method="POST">
-                          <input type="hidden" name="id" value={referral.id} />
-                          <Button
-                            type="submit"
-                            size="sm"
-                            variant="outline"
-                            className="text-green-600 hover:bg-green-50"
-                          >
-                            Mark Paid
-                          </Button>
-                        </form>
+                        <Button
+                          onClick={() => handleMarkPaid(referral.id)}
+                          size="sm"
+                          variant="outline"
+                          className="text-green-600 hover:bg-green-50"
+                        >
+                          Mark Paid
+                        </Button>
                       )}
                     </TableCell>
                   </TableRow>
