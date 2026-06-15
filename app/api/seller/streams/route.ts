@@ -149,7 +149,8 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: error.message || 'Failed to update streams' }, { status: 500 });
     }
 
-    return NextResponse.json({ updated: data?.length || 0 });
+    const updatedCount = Array.isArray(data as unknown) ? (data as unknown as Array<unknown>).length : 0;
+    return NextResponse.json({ updated: updatedCount });
   } catch (error: any) {
     console.error('Stream update API error:', error);
     return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });

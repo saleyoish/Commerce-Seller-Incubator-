@@ -70,18 +70,18 @@ export default function WhatnotOnboardingPage() {
       setSeller(sellerData);
 
       // Check Whatnot seller status
-      const response = await fetch('/api/whatnot/seller-register');
-      const data = await response.json();
+      const statusResponse = await fetch('/api/whatnot/seller-register');
+      const statusData = await statusResponse.json();
       
-      if (response.ok) {
-        setSellerStatus(data);
+      if (statusResponse.ok) {
+        setSellerStatus(statusData);
         
         // Pre-fill form if already registered
-        if (data.status !== 'not_registered') {
+        if (statusData.status !== 'not_registered') {
           setFormData({
             accessToken: '',
-            displayName: data.displayName || '',
-            email: data.email || '',
+            displayName: statusData.displayName || '',
+            email: statusData.email || '',
             phone: '',
             businessAddress: '',
           });

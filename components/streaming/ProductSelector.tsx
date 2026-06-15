@@ -30,7 +30,7 @@ export function ProductSelector({
 }: ProductSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [seller, setSeller] = useState<Seller | null>(null);
@@ -77,11 +77,10 @@ export function ProductSelector({
     if (!seller) return;
 
     try {
-      setLoading(true);
+      setIsLoading(true);
       const response = await authFetch('/api/seller/products?status=active', {
         credentials: 'omit',
       });
-
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data?.error || 'Failed to load products');
@@ -91,7 +90,7 @@ export function ProductSelector({
     } catch (error) {
       console.error('Failed to load products:', error);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 

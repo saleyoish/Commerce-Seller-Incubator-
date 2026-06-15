@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     const headQuery = url.searchParams.get('head') === 'true';
     const orderParam = url.searchParams.get('order');
 
-    const selectOptions = countQuery ? { count: 'exact', head: headQuery } : undefined;
+    const selectOptions = countQuery ? { count: 'exact' as const, head: headQuery } : undefined;
     let query = db.from('products').select('*', selectOptions).eq('seller_id', decoded.userId);
 
     if (statusQuery) {

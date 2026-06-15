@@ -42,7 +42,8 @@ export default function TikTokSetupPage() {
       setSeller(sellerData);
 
       if (sellerData) {
-        const { data: connectionData } = await dbClient
+        const supabaseClient = createClientSideSupabase();
+        const { data: connectionData } = await supabaseClient
           .from('platform_connections')
           .select('*')
           .eq('seller_id', sellerData.id)

@@ -61,17 +61,17 @@ export default function TikTokAffiliatePage() {
       setSeller(sellerData);
 
       // Check affiliate status
-      const response = await fetch('/api/tiktok/affiliate-register');
-      const data = await response.json();
+      const affiliateResponse = await fetch('/api/tiktok/affiliate-register');
+      const affiliateData = await affiliateResponse.json();
       
-      if (response.ok) {
-        setAffiliateStatus(data);
+      if (affiliateResponse.ok) {
+        setAffiliateStatus(affiliateData);
         
         // Pre-fill form if already registered
-        if (data.status !== 'not_registered') {
+        if (affiliateData.status !== 'not_registered') {
           setFormData({
-            businessType: data.businessType || 'individual',
-            businessName: data.businessName || '',
+            businessType: affiliateData.businessType || 'individual',
+            businessName: affiliateData.businessName || '',
             taxId: '',
             businessAddress: '',
           });

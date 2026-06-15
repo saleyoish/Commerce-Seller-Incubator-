@@ -109,9 +109,9 @@ export default function EarningsPage() {
         throw new Error(errorData.error || 'Failed to load earnings data');
       }
 
-      const data = await res.json();
+      const salesData = await res.json();
       // Filter only verified sales for earnings
-      const verifiedSales = (data.sales || []).filter((sale: PlatformSale) => sale.verification_status === 'verified');
+      const verifiedSales = (salesData.sales || []).filter((sale: PlatformSale) => sale.verification_status === 'verified');
       setSales(verifiedSales);
     } catch (error) {
       console.error('Error loading earnings:', error);

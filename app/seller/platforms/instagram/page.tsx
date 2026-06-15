@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { authFetch } from '@/lib/auth';
 import { type PlatformConnection, type Seller, createClientSideSupabase } from '@/lib/supabase-client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -76,7 +77,8 @@ export default function InstagramSetupPage() {
 
       // Only fetch connections if seller exists
       if (sellerData) {
-        const { data: connectionData } = await dbClient.from('platform_connections').select('*').eq('seller_id', sellerData.id).eq('platform', 'instagram').maybeSingle();
+        const supabaseClient = createClientSideSupabase();
+        const { data: connectionData } = await supabaseClient.from('platform_connections').select('*').eq('seller_id', sellerData.id).eq('platform', 'instagram').maybeSingle();
         if (connectionData) {
           setConnection(connectionData);
           const metadata = connectionData.metadata || {};
