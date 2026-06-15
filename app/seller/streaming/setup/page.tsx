@@ -94,14 +94,14 @@ export default function StreamingSetupPage() {
       setIsLoading(true);
       setError(null);
 
-      const authRes = await fetch('/api/auth/check-user', { credentials: 'omit' });
+      const authRes = await authFetch('/api/auth/me');
       if (!authRes.ok) {
         console.log('No user found, redirecting to login');
         router.push('/login');
         return;
       }
       const userData = await authRes.json();
-      if (!userData.user) {
+      if (!userData || !userData.id) {
         console.log('No user found, redirecting to login');
         router.push('/login');
         return;
@@ -115,7 +115,7 @@ export default function StreamingSetupPage() {
         const { data: sellerDataList, error } = await dbClient
           .from('sellers')
           .select('restream_username, restream_stream_key')
-          .eq('user_id', userData.user.id)
+          .eq('user_id', userData.id)
           .order('created_at', { ascending: false });
 
         if (error) {
@@ -170,13 +170,13 @@ export default function StreamingSetupPage() {
       setError(null);
       setSuccess(null);
 
-      const authRes = await fetch('/api/auth/check-user', { credentials: 'omit' });
+      const authRes = await authFetch('/api/auth/me');
       if (!authRes.ok) {
         setError('Please login first');
         return;
       }
       const userData = await authRes.json();
-      if (!userData.user) {
+      if (!userData || !userData.id) {
         setError('Please login first');
         return;
       }
@@ -190,16 +190,16 @@ export default function StreamingSetupPage() {
       const { data: sellersById } = await dbClient
         .from('sellers')
         .select('id, restream_stream_key')
-        .eq('user_id', userData.user.id)
+        .eq('user_id', userData.id)
         .order('created_at', { ascending: false });
 
       existingSellers = sellersById;
 
-      if ((!existingSellers || existingSellers.length === 0) && userData.user.email) {
+      if ((!existingSellers || existingSellers.length === 0) && userData.email) {
         const { data: sellersByEmail } = await dbClient
           .from('sellers')
           .select('id, restream_stream_key')
-          .eq('email', userData.user.email)
+          .eq('email', userData.email)
           .order('created_at', { ascending: false });
         existingSellers = sellersByEmail;
       }
@@ -226,7 +226,7 @@ export default function StreamingSetupPage() {
           restream_stream_key: formData.streamKey,
           updated_at: new Date().toISOString(),
         })
-        .eq('user_id', userData.user.id);
+        .eq('user_id', userData.id);
 
       if (updateError) {
         console.error('Update error:', updateError);

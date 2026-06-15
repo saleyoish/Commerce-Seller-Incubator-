@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createClientSideSupabase, type Product } from '@/lib/supabase-client';
+import { authFetch } from '@/lib/auth';
+import { type Product } from '@/lib/supabase-client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -63,14 +64,13 @@ export default function AdminProductsPage() {
 
   const loadProducts = async () => {
     try {
-      const supabase = createClientSideSupabase();
-      const { data, error } = await supabase
-        .from('products')
-        .select('*, sellers(email)')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setProducts(data || []);
+      const response = await authFetch('/api/admin/products');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to load products');
+      }
+      const data = await response.json();
+      setProducts(data.products || []);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -86,10 +86,14 @@ export default function AdminProductsPage() {
     setSuccess(null);
 
     try {
-      const supabase = createClientSideSupabase();
-      const { error } = await supabase.from('products').delete().eq('id', productId);
+      const response = await authFetch(`/api/admin/products/${productId}`, {
+        method: 'DELETE',
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete product');
+      }
 
       setSuccess('Product deleted successfully');
       // Refresh the list
@@ -124,21 +128,23 @@ export default function AdminProductsPage() {
     setSuccess(null);
 
     try {
-      const supabase = createClientSideSupabase();
-      const { error } = await supabase
-        .from('products')
-        .update({
+      const response = await authFetch(`/api/admin/products/${editingProduct.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           name: editFormData.name,
           description: editFormData.description || null,
           price: editFormData.price,
           stock_quantity: editFormData.stock_quantity,
           category: editFormData.category || null,
           status: editFormData.status,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', editingProduct.id);
+        }),
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update product');
+      }
 
       setSuccess('Product updated successfully');
       setIsEditDialogOpen(false);

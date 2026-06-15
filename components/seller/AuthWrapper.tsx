@@ -1,33 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 export default function AuthWrapper({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { user, loading } = useAuth();
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const res = await fetch('/api/auth/me', { credentials: 'omit' });
-        if (!res.ok) {
-          router.push('/login?redirect=/seller');
-        } else {
-          setIsAuthenticated(true);
-        }
-      } catch {
-        router.push('/login?redirect=/seller');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    checkAuth();
-  }, [router]);
+    if (!loading && !user) {
+      router.push('/login?redirect=/seller');
+    }
+  }, [loading, user, router]);
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-[var(--accent-primary)]" />
@@ -35,7 +23,7 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
     );
   }
 
-  if (!isAuthenticated) return null;
+  if (!user) return null;
 
   return <>{children}</>;
 }

@@ -47,24 +47,18 @@ export default function AccountSettingsPage() {
   useEffect(() => {
     async function loadUserData() {
       try {
-        const token = localStorage.getItem('token');
-        if (!token) {
+        const authRes = await authFetch('/api/auth/me');
+        if (!authRes.ok) {
           router.push('/login?redirect=/seller/settings/account');
           return;
         }
+        const data = await authRes.json();
 
-        const response = await fetch('/api/auth/check-user', {
-          headers: { Authorization: `Bearer ${token}` },
-          credentials: 'omit',
-          cache: 'no-store',
-        });
-        const data = await response.json();
-
-        if (data.user) {
+        if (data) {
           setAccountData(prev => ({
             ...prev,
-            name: data.seller?.name || data.user.user_metadata?.full_name || '',
-            email: data.user.email || '',
+            name: data.seller?.name || '',
+            email: data.email || '',
             phone: data.seller?.phone || '',
           }));
         }
@@ -94,19 +88,11 @@ export default function AccountSettingsPage() {
     setMessage(null);
 
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        router.push('/login?redirect=/seller/settings/account');
-        return;
-      }
-
-      const response = await fetch('/api/auth/account', {
+      const response = await authFetch('/api/auth/account', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
-        credentials: 'omit',
         body: JSON.stringify({
           name: accountData.name,
           email: accountData.email,

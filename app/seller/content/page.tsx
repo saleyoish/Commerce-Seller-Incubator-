@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { authFetch } from "@/lib/auth";
 import { createClientSideSupabase, type GeneratedClip, type ClipCaption } from "@/lib/supabase-client";
-import { checkUserStatus } from "@/lib/auth";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -29,27 +29,22 @@ export default function ContentManagementPage() {
 
   const loadClips = async () => {
     try {
-      const res = await fetch('/api/auth/check-user', { credentials: 'omit' });
+      const res = await authFetch('/api/auth/me');
       if (!res.ok) return;
       const userData = await res.json();
-      if (!userData.user) return;
+      const seller = userData.seller;
+      const isAdmin = userData.isAdmin;
+      if (!seller && !isAdmin) return;
 
       const { db: dbClient } = await import('@/lib/db');
+      const sellerId = seller?.id;
 
-      const { data: seller } = await dbClient
-        .from('sellers')
-        .select('id')
-        .eq('user_id', userData.user.id)
-        .maybeSingle();
-
-      if (!seller && !userData.isAdmin) return;
-
-      if (seller) {
-        setSellerId(seller.id);
+      if (sellerId) {
+        setSellerId(sellerId);
         const { data: clipsData } = await dbClient
           .from('generated_clips')
           .select('*, clip_captions(*), stream_recordings(mux_playback_id, source)')
-          .eq('seller_id', seller.id)
+          .eq('seller_id', sellerId)
           .order('created_at', { ascending: false });
         setClips(clipsData || []);
       }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { authFetch } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -47,12 +48,7 @@ export default function TrainingAdminPage() {
 
   const loadTrainingData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/admin/training', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const res = await authFetch('/api/admin/training');
 
       if (!res.ok) {
         const result = await res.json();
@@ -73,12 +69,10 @@ export default function TrainingAdminPage() {
 
   const handleSendReminder = async (email: string) => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/email/training-reminder', {
+      const res = await authFetch('/api/email/training-reminder', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({ email }),
       });

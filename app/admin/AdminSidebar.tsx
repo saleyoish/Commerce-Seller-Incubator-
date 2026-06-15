@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { createClientSideSupabase } from '@/lib/supabase-client';
+import { signOut } from '@/lib/auth-client';
 import {
   Users,
   Package,
@@ -37,8 +37,7 @@ export default function AdminSidebar() {
   const router = useRouter();
 
   const handleLogout = async () => {
-    const supabase = createClientSideSupabase();
-    await supabase.auth.signOut();
+    await signOut();
     router.push('/login');
   };
 

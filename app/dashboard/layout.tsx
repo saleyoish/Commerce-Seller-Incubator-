@@ -1,11 +1,11 @@
 "use client";
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LogOut, Menu } from 'lucide-react';
 import SellerSidebar from './SellerSidebar';
 import AuthGuard from '@/components/AuthGuard';
+import { useAuth } from '@/context/AuthContext';
 
 export default function DashboardLayout({
   children,
@@ -13,32 +13,11 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    const fetchStatus = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) return;
-        const res = await fetch('/api/auth/check-user', {
-          headers: { Authorization: `Bearer ${token}` },
-          credentials: 'omit',
-          cache: 'no-store',
-        });
-        if (!res.ok) return;
-        const data = await res.json();
-        setIsAdmin(data.isAdmin ?? false);
-      } catch (error) {
-        console.error('Dashboard layout admin status check failed:', error);
-      }
-    };
-
-    fetchStatus();
-  }, []);
+  const { user, logout } = useAuth();
+  const isAdmin = user?.isAdmin ?? false;
 
   const handleLogout = async () => {
-    localStorage.removeItem('token');
-    await fetch('/api/auth/logout', { method: 'POST', credentials: 'omit' });
+    await logout();
     router.push('/login');
   };
 

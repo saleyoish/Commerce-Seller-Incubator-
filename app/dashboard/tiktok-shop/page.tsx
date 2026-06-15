@@ -18,6 +18,7 @@ import {
   ExternalLink,
   Clock,
 } from "lucide-react";
+import { authFetch } from '@/lib/auth';
 
 interface TikTokConnection {
   id: string;
@@ -59,14 +60,14 @@ export default function TikTokShopPage() {
       setError(null);
 
       // Load connection
-      const connRes = await fetch("/api/tiktok/connection");
+      const connRes = await authFetch('/api/tiktok/connection', { credentials: 'omit' });
       if (connRes.ok) {
         const connData = await connRes.json();
         setConnection(connData.connection);
       }
 
       // Load stats
-      const statsRes = await fetch("/api/tiktok/stats");
+      const statsRes = await authFetch('/api/tiktok/stats', { credentials: 'omit' });
       if (statsRes.ok) {
         const statsData = await statsRes.json();
         setStats(statsData);
@@ -81,7 +82,7 @@ export default function TikTokShopPage() {
   const handleConnect = async () => {
     try {
       setIsLoading(true);
-      const res = await fetch("/api/tiktok/connect", { method: "POST" });
+      const res = await authFetch('/api/tiktok/connect', { method: 'POST', credentials: 'omit' });
       const data = await res.json();
 
       if (data.authUrl) {
@@ -102,7 +103,7 @@ export default function TikTokShopPage() {
   const handleDemoConnect = async () => {
     try {
       setIsLoading(true);
-      const res = await fetch("/api/tiktok/demo-connect", { method: "POST" });
+      const res = await authFetch('/api/tiktok/demo-connect', { method: 'POST', credentials: 'omit' });
       const data = await res.json();
 
       if (data.success) {
@@ -123,9 +124,7 @@ export default function TikTokShopPage() {
       setIsSyncing(true);
       setError(null);
 
-      const res = await fetch(`/api/tiktok/sync-${type}`, {
-        method: "POST",
-      });
+      const res = await authFetch(`/api/tiktok/sync-${type}`, { method: 'POST', credentials: 'omit' });
 
       const data = await res.json();
 
@@ -155,9 +154,7 @@ export default function TikTokShopPage() {
 
     try {
       setIsLoading(true);
-      const res = await fetch("/api/tiktok/disconnect", {
-        method: "POST",
-      });
+      const res = await authFetch('/api/tiktok/disconnect', { method: 'POST', credentials: 'omit' });
 
       if (res.ok) {
         setConnection(null);

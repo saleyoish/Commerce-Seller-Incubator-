@@ -1,30 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
 
 export default function DashboardNav() {
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, loading } = useAuth();
+  const isAdmin = user?.isAdmin ?? false;
 
-  useEffect(() => {
-    const checkAdminStatus = async () => {
-      try {
-        const res = await fetch('/api/auth/check-user', { credentials: 'omit' });
-        if (res.ok) {
-          const data = await res.json();
-          setIsAdmin(data.isAdmin ?? false);
-        }
-      } catch (error) {
-        console.error('Error checking admin status:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    checkAdminStatus();
-  }, []);
-
-  if (isLoading) {
+  if (loading) {
     return (
       <div>
         <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-4 uppercase tracking-widest">Dashboard</h4>

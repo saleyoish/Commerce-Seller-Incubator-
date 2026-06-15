@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createClientSideSupabase, type GeneratedClip, type ClipCaption } from '@/lib/supabase-client';
+import { authFetch, checkIsAdmin } from '@/lib/auth';
+import { type GeneratedClip, type ClipCaption } from '@/lib/supabase-client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -37,19 +38,8 @@ export default function AdminContentModerationPage() {
 
   const checkAdminAndLoadClips = async () => {
     try {
-      const supabase = createClientSideSupabase();
-      
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Check if admin
-      const { data: admin } = await supabase
-        .from('admins')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!admin) {
+      const isAdminUser = await checkIsAdmin();
+      if (!isAdminUser) {
         return;
       }
       setIsAdmin(true);
@@ -63,7 +53,7 @@ export default function AdminContentModerationPage() {
 
   const loadClips = async () => {
     try {
-      const response = await fetch('/api/admin/content/moderation?status=pending');
+      const response = await authFetch('/api/admin/content/moderation?status=pending');
       if (response.ok) {
         const data = await response.json();
         setClips(data.clips || []);
@@ -80,7 +70,7 @@ export default function AdminContentModerationPage() {
     
     setActionLoading(true);
     try {
-      const response = await fetch('/api/admin/content/moderation', {
+      const response = await authFetch('/api/admin/content/moderation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -102,7 +92,7 @@ export default function AdminContentModerationPage() {
 
   const handleApproveClip = async (clipId: string) => {
     try {
-      const response = await fetch(`/api/content/clips/${clipId}/approve`, {
+      const response = await authFetch(`/api/content/clips/${clipId}/approve`, {
         method: 'PUT',
       });
 
@@ -116,7 +106,7 @@ export default function AdminContentModerationPage() {
 
   const handleRejectClip = async (clipId: string) => {
     try {
-      const response = await fetch(`/api/content/clips/${clipId}/reject`, {
+      const response = await authFetch(`/api/content/clips/${clipId}/reject`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason: 'Rejected by admin' }),

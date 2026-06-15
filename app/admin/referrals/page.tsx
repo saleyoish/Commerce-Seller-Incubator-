@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { authFetch } from '@/lib/auth';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,12 +28,7 @@ export default function ReferralsAdminPage() {
 
   const loadReferralsData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/admin/referrals', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const res = await authFetch('/api/admin/referrals');
 
       if (!res.ok) {
         const result = await res.json();
@@ -53,12 +49,10 @@ export default function ReferralsAdminPage() {
 
   const handleMarkPaid = async (id: string) => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/admin/referrals/mark-paid', {
+      const res = await authFetch('/api/admin/referrals/mark-paid', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({ id }),
       });

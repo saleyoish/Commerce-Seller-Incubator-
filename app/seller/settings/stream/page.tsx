@@ -17,10 +17,10 @@ export default function StreamSettingsPage() {
 
   const loadSellerData = async () => {
     try {
-      const res = await fetch('/api/auth/check-user', { credentials: 'omit' });
+      const res = await authFetch('/api/auth/me');
       if (!res.ok) { setIsLoading(false); return; }
       const userData = await res.json();
-      if (!userData.user) { setIsLoading(false); return; }
+      if (!userData || !userData.id) { setIsLoading(false); return; }
 
       const { db: dbClient } = await import('@/lib/db');
 
@@ -30,16 +30,16 @@ export default function StreamSettingsPage() {
       const { data: sellersById } = await dbClient
         .from('sellers')
         .select('restream_username, restream_stream_key')
-        .eq('user_id', userData.user.id)
+        .eq('user_id', userData.id)
         .order('created_at', { ascending: false });
 
       sellerDataList = sellersById;
 
-      if ((!sellerDataList || sellerDataList.length === 0) && userData.user.email) {
+      if ((!sellerDataList || sellerDataList.length === 0) && userData.email) {
         const { data: sellersByEmail } = await dbClient
           .from('sellers')
           .select('restream_username, restream_stream_key')
-          .eq('email', userData.user.email)
+          .eq('email', userData.email)
           .order('created_at', { ascending: false });
         sellerDataList = sellersByEmail;
       }

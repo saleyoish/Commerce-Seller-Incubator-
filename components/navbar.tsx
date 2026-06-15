@@ -4,41 +4,21 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Home, LayoutDashboard, Menu, X, User, Play, Sun, Moon } from "lucide-react";
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTheme } from '@/components/theme-provider';
+import { useAuth } from '@/context/AuthContext';
 
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const { theme, toggleTheme, mounted } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const res = await fetch('/api/auth/me', { credentials: 'omit' });
-        if (res.ok) {
-          const data = await res.json();
-          setIsLoggedIn(true);
-          setIsAdmin(data.isAdmin ?? false);
-        } else {
-          setIsLoggedIn(false);
-          setIsAdmin(false);
-        }
-      } catch {
-        setIsLoggedIn(false);
-      }
-    };
-    checkAuth();
-  }, []);
+  const { user, loading, logout } = useAuth();
+  const isLoggedIn = !!user;
+  const isAdmin = user?.isAdmin ?? false;
 
   const handleLogout = async () => {
-    localStorage.removeItem('token');
-    await fetch('/api/auth/logout', { method: 'POST', credentials: 'omit' });
-    setIsLoggedIn(false);
-    setIsAdmin(false);
+    await logout();
     router.push('/');
   };
 

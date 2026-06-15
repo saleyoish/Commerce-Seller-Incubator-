@@ -26,29 +26,12 @@ import {
 import HeroButtons from "@/components/hero-buttons";
 import DashboardNav from "@/components/DashboardNav";
 import { GlobalGoLiveButton } from "@/components/streaming/GlobalGoLiveButton";
-import { useState, useEffect } from 'react';
+import { useAuth } from '@/context/AuthContext';
 
 export default function Home() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [currentSellerId, setCurrentSellerId] = useState<string>('');
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const res = await fetch('/api/auth/me', { credentials: 'omit' });
-        if (res.ok) {
-          const data = await res.json();
-          setIsLoggedIn(true);
-          setCurrentSellerId(data.seller?.id || '');
-        } else {
-          setIsLoggedIn(false);
-        }
-      } catch {
-        setIsLoggedIn(false);
-      }
-    };
-    checkAuth();
-  }, []);
+  const { user } = useAuth();
+  const isLoggedIn = !!user;
+  const currentSellerId = user?.id || '';
 
   return (
     <div className="min-h-screen bg-[var(--bg-base)]">

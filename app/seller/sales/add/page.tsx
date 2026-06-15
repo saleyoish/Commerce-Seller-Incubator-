@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClientSideSupabase, type Seller, type Product } from '@/lib/supabase-client';
-import { checkUserStatus } from '@/lib/auth';
+import { type Seller, type Product } from '@/lib/supabase-client';
+import { authFetch } from '@/lib/auth';
+import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -57,9 +58,16 @@ export default function AddManualSalePage() {
     sellerPayout: 0,
   });
 
+  const { user, loading } = useAuth();
+
   useEffect(() => {
+    if (loading) return;
+    if (!user || (!user.isSeller && !user.isAdmin)) {
+      router.push('/login');
+      return;
+    }
     loadData();
-  }, []);
+  }, [loading, user]);
 
   useEffect(() => {
     // Calculate commission breakdown
@@ -81,23 +89,27 @@ export default function AddManualSalePage() {
 
   const loadData = async () => {
     try {
-      const res = await fetch('/api/auth/check-user', { credentials: 'omit' });
-      if (!res.ok) { router.push('/login'); return; }
-      const userData = await res.json();
-      if (!userData.user) { router.push('/login'); return; }
+      const response = await authFetch('/api/auth/me');
+      if (!response.ok) {
+        router.push('/login');
+        return;
+      }
+      const userData = await response.json();
+      if (!userData || !userData.id) {
+        router.push('/login');
+        return;
+      }
 
       setSeller(userData.seller);
 
       if (userData.seller) {
-        // Load products using client-side Supabase
-        const { createClientSideSupabase } = await import('@/lib/supabase-client');
-        const supabase = createClientSideSupabase();
-        const { data: productsData } = await supabase
-          .from('products')
-          .select('*')
-          .eq('seller_id', userData.seller.id)
-          .eq('status', 'active');
-        setProducts(productsData || []);
+        const productsResponse = await authFetch('/api/seller/products?status=active');
+        if (!productsResponse.ok) {
+          const errorData = await productsResponse.json();
+          throw new Error(errorData.error || 'Failed to load products');
+        }
+        const productsData = await productsResponse.json();
+        setProducts(productsData.products || []);
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -149,12 +161,10 @@ export default function AddManualSalePage() {
 
       console.log('[Sale Submit] Inserting data:', saleData);
 
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/seller/sales', {
+      const response = await authFetch('/api/seller/sales', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(saleData),
       });

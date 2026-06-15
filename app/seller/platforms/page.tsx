@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClientSideSupabase, type PlatformConnection, type Seller } from '@/lib/supabase-client';
-import { checkUserStatus } from '@/lib/auth';
+import { authFetch } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -81,9 +81,17 @@ export default function PlatformsPage() {
     try {
       const supabase = createClientSideSupabase();
 
-      // Check user status via API (avoids RLS issues)
-      const { isSeller, isAdmin, seller: sellerData } = await checkUserStatus();
-      
+      const response = await authFetch('/api/auth/me');
+      if (!response.ok) {
+        router.push('/login');
+        return;
+      }
+
+      const data = await response.json();
+      const isSeller = data.isSeller || false;
+      const isAdmin = data.isAdmin || false;
+      const sellerData = data.seller || null;
+
       if (!isSeller && !isAdmin) {
         router.push('/login');
         return;

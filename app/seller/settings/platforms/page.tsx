@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { type PlatformConnection } from '@/lib/supabase-client';
-import { checkUserStatus } from '@/lib/auth';
 import { 
   Play, 
   Camera, 

@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createClientSideSupabase, type PlatformSale, type Seller } from '@/lib/supabase-client';
+import { authFetch } from '@/lib/auth';
+import { type PlatformSale, type Seller } from '@/lib/supabase-client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -57,12 +58,7 @@ export default function AdminSalesPage() {
 
   const loadSales = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/admin/sales', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const response = await authFetch('/api/admin/sales');
 
       if (!response.ok) {
         const result = await response.json();
@@ -106,12 +102,10 @@ export default function AdminSalesPage() {
         }
       }
 
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/admin/sales', {
+      const response = await authFetch('/api/admin/sales', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           saleId,
@@ -155,27 +149,29 @@ export default function AdminSalesPage() {
     setError(null);
 
     try {
-      const supabase = createClientSideSupabase();
-      
-      // Recalculate commission values based on new sale amount
       const saleAmount = editFormData.sale_amount;
       const platformFeePercent = PLATFORM_CONFIG.PLATFORM_FEE_PERCENT;
       
       const ourCommission = saleAmount * (platformFeePercent / 100);
       const sellerPayout = saleAmount - ourCommission;
 
-      const { error } = await supabase
-        .from('platform_sales')
-        .update({
+      const response = await authFetch(`/api/sales/${editingSale.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           product_name: editFormData.product_name,
           sale_amount: saleAmount,
           platform: editFormData.platform,
           sale_date: editFormData.sale_date,
-          our_commission: ourCommission,
-          seller_payout: sellerPayout,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', editingSale.id);
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update sale');
+      }
 
       if (error) throw error;
 
@@ -198,11 +194,14 @@ export default function AdminSalesPage() {
     setError(null);
 
     try {
-      const supabase = createClientSideSupabase();
-      const { error } = await supabase
-        .from('platform_sales')
-        .delete()
-        .eq('id', saleId);
+      const response = await authFetch(`/api/sales/${saleId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete sale');
+      }
 
       if (error) throw error;
 

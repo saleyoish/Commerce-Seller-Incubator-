@@ -3,8 +3,8 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { createClientSideSupabase, type Seller, type Product, type Sale } from '@/lib/supabase-client';
-import { checkUserStatus } from '@/lib/auth';
+import { authFetch } from '@/lib/auth';
+import { type Seller, type Product, type Sale } from '@/lib/supabase-client';
 import { useStreamStatus } from '@/hooks/useStreamStatus';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
@@ -90,8 +90,13 @@ function DashboardContentInner() {
   const onboardingRefresh = searchParams.get('onboarding') === 'refresh';
 
   useEffect(() => {
+    if (loading) return;
+    if (!user || (!user.isSeller && !user.isAdmin)) {
+      router.push('/login');
+      return;
+    }
     loadDashboardData();
-  }, []);
+  }, [loading, user]);
 
   useEffect(() => {
     if (onboardingSuccess || onboardingRefresh) {
@@ -114,9 +119,17 @@ function DashboardContentInner() {
 
   const loadDashboardData = async () => {
     try {
-      // Check user status via API (avoids RLS issues)
-      const { isSeller, isAdmin, seller: sellerData } = await checkUserStatus();
-      
+      const response = await authFetch('/api/auth/me');
+      if (!response.ok) {
+        router.push('/login');
+        return;
+      }
+
+      const data = await response.json();
+      const isSeller = data.isSeller || false;
+      const isAdmin = data.isAdmin || false;
+      const sellerData = data.seller || null;
+
       if (!isSeller && !isAdmin) {
         router.push('/login');
         return;
@@ -127,7 +140,6 @@ function DashboardContentInner() {
       
       // Only access seller-specific data if seller exists
       if (sellerData) {
-        const supabase = createClientSideSupabase();
         setStreamUrl(sellerData.stream_embed_url || '');
         setSchedule(sellerData.schedule_text || '');
 
@@ -135,28 +147,35 @@ function DashboardContentInner() {
           setShowOnboarding(true);
         }
 
-        const { data: productsData } = await supabase.from('products').select('*').eq('seller_id', sellerData.id).order('created_at', { ascending: false }).limit(5);
-        setProducts(productsData || []);
+        const [productsResponse, salesResponse, streamsResponse, productCountResponse, completedSalesResponse] = await Promise.all([
+          authFetch('/api/seller/products?limit=5'),
+          authFetch('/api/seller/sales?limit=5'),
+          authFetch('/api/seller/streams?status=pending,live&limit=1'),
+          authFetch('/api/seller/products?count=true&head=true'),
+          authFetch('/api/seller/sales?status=completed&select=amount,platform_fee,status,created_at,product_id'),
+        ]);
 
-        const { data: salesData } = await supabase.from('sales').select('*').eq('seller_id', sellerData.id).order('created_at', { ascending: false }).limit(5);
-        setSales(salesData || []);
+        if (!productsResponse.ok) throw new Error('Failed to load products');
+        if (!salesResponse.ok) throw new Error('Failed to load sales');
+        if (!streamsResponse.ok) throw new Error('Failed to load streams');
+        if (!productCountResponse.ok) throw new Error('Failed to load product count');
+        if (!completedSalesResponse.ok) throw new Error('Failed to load completed sales');
 
-        // Fetch streams data
-        try {
-          const streamsResponse = await fetch('/api/seller/streams');
-          if (streamsResponse.ok) {
-            const streamsData = await streamsResponse.json();
-            setStreams(streamsData.streams || []);
-          }
-        } catch (error) {
-          console.error('Failed to fetch streams:', error);
-        }
+        const productsData = await productsResponse.json();
+        const salesData = await salesResponse.json();
+        const streamsData = await streamsResponse.json();
+        const productCountData = await productCountResponse.json();
+        const completedSalesData = await completedSalesResponse.json();
 
-        const { count: productCount } = await supabase.from('products').select('*', { count: 'exact', head: true }).eq('seller_id', sellerData.id);
-        const { data: allSales } = await supabase.from('sales').select('amount, platform_fee, status, created_at, product_id').eq('seller_id', sellerData.id).eq('status', 'completed');
-        const totalRevenue = allSales?.reduce((sum, sale) => sum + (sale.amount - sale.platform_fee), 0) || 0;
+        setProducts(productsData.products || []);
+        setSales(salesData.sales || []);
+        setStreams(streamsData.streams || []);
 
-        setStats({ totalProducts: productCount || 0, totalSales: allSales?.length || 0, totalRevenue, pendingPayout: totalRevenue });
+        const productCount = productCountData.count ?? 0;
+        const allSales = completedSalesData.sales || [];
+        const totalRevenue = allSales.reduce((sum: number, sale: any) => sum + (sale.amount - sale.platform_fee), 0);
+
+        setStats({ totalProducts: productCount, totalSales: allSales.length, totalRevenue, pendingPayout: totalRevenue });
 
         // Prepare chart data with better error handling
         const salesByMonth = allSales?.reduce((acc: any, sale: PartialSale) => {
@@ -214,16 +233,9 @@ function DashboardContentInner() {
 
   const handleStripeOnboarding = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-      };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-      const response = await fetch('/api/stripe/connect-onboarding', { 
+      const response = await authFetch('/api/stripe/connect-onboarding', { 
         method: 'POST',
-        headers,
+        headers: { 'Content-Type': 'application/json' },
       });
       const data = await response.json();
       if (data.url) window.location.href = data.url;
@@ -236,7 +248,7 @@ function DashboardContentInner() {
     setSavingConfig(true);
     setConfigSaved(false);
     try {
-      const response = await fetch('/api/seller/config', {
+      const response = await authFetch('/api/seller/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ streamEmbedUrl: streamUrl, scheduleText: schedule }),
@@ -257,7 +269,7 @@ function DashboardContentInner() {
   const handleGoLive = async () => {
     try {
       // Check Restream connection status
-      const response = await fetch('/api/seller/restream-status');
+      const response = await authFetch('/api/seller/restream-status');
       if (response.ok) {
         const data = await response.json();
         if (data.connected) {

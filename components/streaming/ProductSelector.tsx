@@ -13,8 +13,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Search, Package, DollarSign, Star } from 'lucide-react';
-import { createClientSideSupabase, type Product, type Seller } from '@/lib/supabase-client';
-import { checkUserStatus } from '@/lib/auth';
+import { type Product, type Seller } from '@/lib/supabase-client';
+import { authFetch } from '@/lib/auth';
+import { useAuth } from '@/context/AuthContext';
 
 interface ProductSelectorProps {
   selectedProducts: string[];
@@ -33,21 +34,28 @@ export function ProductSelector({
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [seller, setSeller] = useState<Seller | null>(null);
+  const { user, loading } = useAuth();
 
   // Load seller data
   useEffect(() => {
+    if (loading) return;
+    if (!user?.isSeller) return;
+
     const loadSeller = async () => {
       try {
-        const { isSeller, seller: sellerData } = await checkUserStatus();
-        if (isSeller && sellerData) {
-          setSeller(sellerData);
+        const response = await authFetch('/api/auth/me');
+        if (!response.ok) return;
+
+        const data = await response.json();
+        if (data.isSeller && data.seller) {
+          setSeller(data.seller);
         }
       } catch (error) {
         console.error('Failed to load seller:', error);
       }
     };
     loadSeller();
-  }, []);
+  }, [loading, user?.isSeller]);
 
   // Load products from database
   useEffect(() => {
@@ -67,17 +75,19 @@ export function ProductSelector({
 
   const loadProducts = async () => {
     if (!seller) return;
-    
+
     try {
       setLoading(true);
-      const supabase = createClientSideSupabase();
-      const { data: productsData } = await supabase
-        .from('products')
-        .select('*')
-        .eq('seller_id', seller.id)
-        .eq('status', 'active');
+      const response = await authFetch('/api/seller/products?status=active', {
+        credentials: 'omit',
+      });
 
-      setProducts(productsData || []);
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || 'Failed to load products');
+      }
+
+      setProducts(data.products || []);
     } catch (error) {
       console.error('Failed to load products:', error);
     } finally {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createClientSideSupabase } from '@/lib/supabase-client';
+import { authFetch } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -40,46 +40,14 @@ export default function AdminPayoutsPage() {
 
   const loadPayouts = async () => {
     try {
-      const supabase = createClientSideSupabase();
-
-      // Get all approved sellers with active Stripe accounts
-      const { data: sellers, error: sellersError } = await supabase
-        .from('sellers')
-        .select('*')
-        .eq('approval_status', 'approved')
-        .eq('stripe_onboarding_status', 'active')
-        .not('stripe_account_id', 'is', null);
-
-      if (sellersError) throw sellersError;
-
-      // Get completed sales for each seller
-      const payoutData: PayoutData[] = [];
-
-      for (const seller of sellers || []) {
-        const { data: sales } = await supabase
-          .from('sales')
-          .select('amount, platform_fee')
-          .eq('seller_id', seller.id)
-          .eq('status', 'completed');
-
-        const totalSales = sales?.reduce((sum, s) => sum + s.amount, 0) || 0;
-        const platformFees = sales?.reduce((sum, s) => sum + s.platform_fee, 0) || 0;
-        const netAmount = totalSales - platformFees;
-
-        if (netAmount > 0) {
-          payoutData.push({
-            sellerId: seller.id,
-            sellerEmail: seller.email,
-            stripeAccountId: seller.stripe_account_id!,
-            stripeStatus: seller.stripe_onboarding_status,
-            totalSales,
-            platformFees,
-            netAmount,
-          });
-        }
+      const response = await authFetch('/api/admin/payouts');
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to load payouts');
       }
 
-      setPayouts(payoutData);
+      const data = await response.json();
+      setPayouts(data.payouts || []);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -98,7 +66,7 @@ export default function AdminPayoutsPage() {
         throw new Error(`Amount must be at least $${PLATFORM_CONFIG.MIN_PAYOUT_THRESHOLD}`);
       }
 
-      const response = await fetch('/api/admin/trigger-payout', {
+      const response = await authFetch('/api/admin/trigger-payout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sellerId, amount }),

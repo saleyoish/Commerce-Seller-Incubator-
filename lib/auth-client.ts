@@ -1,3 +1,5 @@
+import { authFetch } from './auth';
+
 // Client-side auth helpers using custom JWT
 // Drop-in replacement for supabase.auth.getUser() calls in client components
 
@@ -11,12 +13,6 @@ export interface AuthUser {
   seller?: Record<string, unknown> | null;
 }
 
-function getAuthHeaders(): HeadersInit {
-  if (typeof window === 'undefined') return {};
-  const token = localStorage.getItem('token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
 /**
  * Get the current authenticated user from the JWT token.
  * Returns null if not authenticated.
@@ -24,8 +20,7 @@ function getAuthHeaders(): HeadersInit {
  */
 export async function getCurrentUser(): Promise<AuthUser | null> {
   try {
-    const res = await fetch('/api/auth/me', {
-      headers: getAuthHeaders(),
+    const res = await authFetch('/api/auth/me', {
       credentials: 'omit',
     });
     if (!res.ok) return null;
@@ -51,5 +46,5 @@ export async function signOut(): Promise<void> {
   if (typeof window !== 'undefined') {
     localStorage.removeItem('token');
   }
-  await fetch('/api/auth/logout', { method: 'POST', credentials: 'omit' });
+  await authFetch('/api/auth/logout', { method: 'POST', credentials: 'omit' });
 }

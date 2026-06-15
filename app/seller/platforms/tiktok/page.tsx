@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClientSideSupabase, type PlatformConnection, type Seller } from '@/lib/supabase-client';
+import { authFetch } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -31,20 +32,12 @@ export default function TikTokSetupPage() {
 
   const loadData = async () => {
     try {
-      const res = await fetch('/api/auth/check-user', { credentials: 'omit' });
+      const res = await authFetch('/api/auth/me');
       if (!res.ok) { router.push('/login'); return; }
       const userData = await res.json();
-      if (!userData.user) { router.push('/login'); return; }
+      const { seller: sellerData, isAdmin } = userData;
 
-      const { db: dbClient } = await import('@/lib/db');
-
-      const { data: sellerData } = await dbClient
-        .from('sellers')
-        .select('*')
-        .eq('user_id', userData.user.id)
-        .maybeSingle();
-
-      if (!sellerData && !userData.isAdmin) { router.push('/signup'); return; }
+      if (!sellerData && !isAdmin) { router.push('/signup'); return; }
 
       setSeller(sellerData);
 

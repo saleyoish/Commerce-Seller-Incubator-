@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientSideSupabase, type PlatformConnection, type Seller } from '@/lib/supabase-client';
-import { checkUserStatus } from '@/lib/auth';
+import { authFetch } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -33,7 +33,17 @@ export default function WhatnotSetupPage() {
       setError(null);
       setSuccess(null);
 
-      const { isSeller, isAdmin, seller: sellerData } = await checkUserStatus();
+      const response = await authFetch('/api/auth/me');
+      if (!response.ok) {
+        router.push('/login');
+        return;
+      }
+
+      const data = await response.json();
+      const isSeller = data.isSeller || false;
+      const isAdmin = data.isAdmin || false;
+      const sellerData = data.seller || null;
+
       if (!isSeller && !isAdmin) {
         router.push('/login');
         return;

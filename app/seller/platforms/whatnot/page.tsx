@@ -29,12 +29,12 @@ export default function WhatnotSetupPage() {
 
   const loadData = async () => {
     try {
-      const res = await fetch('/api/auth/check-user', { credentials: 'omit' });
+      const res = await authFetch('/api/auth/me');
       if (!res.ok) { router.push('/login'); return; }
       const userData = await res.json();
-      if (!userData.user) { router.push('/login'); return; }
+      if (!userData || !userData.id) { router.push('/login'); return; }
       const { db: dbClient } = await import('@/lib/db');
-      const { data: sellerData } = await dbClient.from('sellers').select('*').eq('user_id', userData.user.id).maybeSingle();
+      const { data: sellerData } = await dbClient.from('sellers').select('*').eq('user_id', userData.id).maybeSingle();
       if (!sellerData && !userData.isAdmin) { router.push('/signup'); return; }
       setSeller(sellerData);
 

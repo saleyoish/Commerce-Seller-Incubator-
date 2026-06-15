@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createClientSideSupabase, type Seller } from '@/lib/supabase-client';
+import { authFetch } from '@/lib/auth';
+import type { Seller } from '@/lib/supabase-client';
 import {
   Table,
   TableBody,
@@ -30,7 +31,7 @@ export default function AdminSellersPage() {
 
   const loadSellers = async () => {
     try {
-      const response = await fetch('/api/admin/sellers');
+      const response = await authFetch('/api/admin/sellers');
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error || 'Failed to load sellers');
@@ -48,7 +49,7 @@ export default function AdminSellersPage() {
     setActionLoading(sellerId);
     setError(null);
     try {
-      const response = await fetch('/api/admin/approve-seller', {
+      const response = await authFetch('/api/admin/approve-seller', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sellerId, approve }),
@@ -75,7 +76,7 @@ export default function AdminSellersPage() {
     setActionLoading(editingSeller.id);
     setError(null);
     try {
-      const response = await fetch('/api/admin/update-seller', {
+      const response = await authFetch('/api/admin/update-seller', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sellerId: editingSeller.id, ...updatedSeller }),
@@ -111,7 +112,7 @@ export default function AdminSellersPage() {
     setActionLoading(sellerId);
     setError(null);
     try {
-      const response = await fetch('/api/admin/delete-seller', {
+      const response = await authFetch('/api/admin/delete-seller', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sellerId }),

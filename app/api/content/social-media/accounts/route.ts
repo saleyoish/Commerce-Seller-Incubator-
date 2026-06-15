@@ -1,51 +1,44 @@
 // API route for managing social media accounts
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSideSupabase } from '@/lib/supabase-server';
+import { extractToken, verifyJWT } from '@/lib/jwt';
+import { db } from '@/lib/db';
 import { createAdminSupabase } from '@/lib/supabase-admin';
 import type { SocialMediaAccount } from '@/lib/supabase-client';
 
 // GET: List connected social media accounts
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
-    const supabase = await createServerSideSupabase();
-    
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+    const token = extractToken(request.headers);
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get seller ID
-    const { data: seller } = await supabase
+    const payload = await verifyJWT(token);
+    if (!payload) {
+      return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 });
+    }
+
+    const { data: seller } = await db
       .from('sellers')
       .select('id')
-      .eq('user_id', user.id)
+      .eq('id', payload.userId)
       .maybeSingle();
 
-    // Check if user is admin (admins can access without seller record)
-    const { data: adminData } = await supabase
+    const { data: adminData } = await db
       .from('admins')
       .select('id')
-      .eq('user_id', user.id)
+      .eq('id', payload.userId)
       .maybeSingle();
 
     if (!seller && !adminData) {
-      return NextResponse.json(
-        { error: 'Seller not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Seller not found' }, { status: 404 });
     }
 
-    // Get accounts (only if seller exists)
     let accounts: any[] = [];
     let error = null;
-    
+
     if (seller) {
-      const result = await supabase
+      const result = await db
         .from('social_media_accounts')
         .select('*')
         .eq('seller_id', seller.id)
@@ -56,13 +49,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     if (error) {
       console.error('Error fetching accounts:', error);
-      return NextResponse.json(
-        { error: 'Failed to fetch accounts' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to fetch accounts' }, { status: 500 });
     }
 
-    // Remove sensitive fields
     const sanitizedAccounts = accounts?.map((acc: SocialMediaAccount) => ({
       id: acc.id,
       platform: acc.platform,
@@ -76,26 +65,21 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ accounts: sanitizedAccounts });
   } catch (error) {
     console.error('Error in accounts GET:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
 // POST: Store new social media account (after OAuth flow)
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    const supabase = await createServerSideSupabase();
-    
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+    const token = extractToken(request.headers);
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const payload = await verifyJWT(token);
+    if (!payload) {
+      return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 });
     }
 
     const body = await request.json();
@@ -109,29 +93,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     } = body;
 
     if (!platform || !accessToken) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Get seller ID
-    const { data: seller } = await supabase
+    const { data: seller } = await db
       .from('sellers')
       .select('id')
-      .eq('user_id', user.id)
+      .eq('id', payload.userId)
       .single();
 
     if (!seller) {
-      return NextResponse.json(
-        { error: 'Seller not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Seller not found' }, { status: 404 });
     }
 
     const adminSupabase = createAdminSupabase();
 
-    // Check if account already exists
     const { data: existing } = await adminSupabase
       .from('social_media_accounts')
       .select('id')
@@ -140,7 +116,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       .single();
 
     if (existing) {
-      // Update existing account
       const { data: updated, error } = await adminSupabase
         .from('social_media_accounts')
         .update({
@@ -158,19 +133,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
       if (error) {
         console.error('Error updating account:', error);
-        return NextResponse.json(
-          { error: 'Failed to update account' },
-          { status: 500 }
-        );
+        return NextResponse.json({ error: 'Failed to update account' }, { status: 500 });
       }
 
-      return NextResponse.json({
-        message: 'Account updated successfully',
-        account: updated,
-      });
+      return NextResponse.json({ message: 'Account updated successfully', account: updated });
     }
 
-    // Create new account
     const { data: account, error } = await adminSupabase
       .from('social_media_accounts')
       .insert({
@@ -188,21 +156,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     if (error) {
       console.error('Error creating account:', error);
-      return NextResponse.json(
-        { error: 'Failed to create account' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to create account' }, { status: 500 });
     }
 
-    return NextResponse.json({
-      message: 'Account connected successfully',
-      account,
-    });
+    return NextResponse.json({ message: 'Account connected successfully', account });
   } catch (error) {
     console.error('Error in accounts POST:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

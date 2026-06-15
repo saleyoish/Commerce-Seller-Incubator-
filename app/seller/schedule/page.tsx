@@ -2,8 +2,8 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { createClientSideSupabase, type StreamSession, type Seller, type Product } from '@/lib/supabase-client';
-import { checkUserStatus } from '@/lib/auth';
+import { type StreamSession, type Seller, type Product } from '@/lib/supabase-client';
+import { authFetch } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -110,7 +110,7 @@ function ScheduleContent() {
       
       setIsSubmitting(true);
       try {
-        const response = await fetch('/api/streaming/start', {
+const response = await authFetch('/api/streaming/start', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ streamId: dueShow.id }),
@@ -144,9 +144,17 @@ function ScheduleContent() {
 
   const loadData = async () => {
     try {
-      // Check user status via API (avoids RLS issues)
-      const { isSeller, isAdmin, seller: sellerData } = await checkUserStatus();
-      
+      const response = await authFetch('/api/auth/me');
+      if (!response.ok) {
+        router.push('/login');
+        return;
+      }
+
+      const data = await response.json();
+      const isSeller = data.isSeller || false;
+      const isAdmin = data.isAdmin || false;
+      const sellerData = data.seller || null;
+
       if (!isSeller && !isAdmin) {
         router.push('/login');
         return;
@@ -156,28 +164,23 @@ function ScheduleContent() {
 
       // Get seller-specific data (only if seller exists)
       if (sellerData) {
-        const supabase = createClientSideSupabase();
-        
-        // Get products
         setIsLoadingProducts(true);
-        const { data: productsData } = await supabase
-          .from('products')
-          .select('*')
-          .eq('seller_id', sellerData.id)
-          .eq('status', 'active');
-
-        setProducts(productsData || []);
+        const productsResponse = await authFetch('/api/seller/products?status=active');
+        if (!productsResponse.ok) {
+          const errorData = await productsResponse.json();
+          throw new Error(errorData.error || 'Failed to load products');
+        }
+        const productsData = await productsResponse.json();
+        setProducts(productsData.products || []);
         setIsLoadingProducts(false);
 
-        // Get all shows (upcoming + past)
-        const { data: showsData } = await supabase
-          .from('stream_sessions')
-          .select('*')
-          .eq('seller_id', sellerData.id)
-          .in('status', ['scheduled', 'live', 'ended', 'cancelled'])
-          .order('scheduled_start', { ascending: false });
-
-        setScheduledShows(showsData || []);
+        const showsResponse = await authFetch('/api/seller/streams?status=scheduled,live,ended,cancelled&order=scheduled_start.desc');
+        if (!showsResponse.ok) {
+          const errorData = await showsResponse.json();
+          throw new Error(errorData.error || 'Failed to load scheduled shows');
+        }
+        const showsData = await showsResponse.json();
+        setScheduledShows(showsData.streams || []);
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -189,13 +192,13 @@ function ScheduleContent() {
 
   const loadShowToDuplicate = async (id: string) => {
     try {
-      const supabase = createClientSideSupabase();
-      const { data: show } = await supabase
-        .from('stream_sessions')
-        .select('*')
-        .eq('id', id)
-        .single();
-
+      const response = await authFetch(`/api/seller/streams?ids=${encodeURIComponent(id)}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to load show');
+      }
+      const data = await response.json();
+      const show = data.streams?.[0];
       if (show) {
         const scheduledDate = new Date(show.scheduled_start || '');
         setFormData({
@@ -233,17 +236,15 @@ function ScheduleContent() {
 
     setIsProcessingMissed(true);
     try {
-      const supabase = createClientSideSupabase();
-      const { error } = await supabase
-        .from('stream_sessions')
-        .update({ status: 'cancelled' })
-        .in('id', missedShows.map((show) => show.id));
-
-      if (error) {
-        console.error('Error cancelling missed shows:', error);
-        return;
+      const response = await authFetch('/api/seller/streams', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: missedShows.map((show) => show.id), status: 'cancelled' }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to cancel missed shows');
       }
-
       await loadData();
     } catch (error) {
       console.error('Error cancelling missed shows:', error);
@@ -262,7 +263,7 @@ function ScheduleContent() {
     setError(null);
 
     try {
-      const response = await fetch('/api/streaming/start', {
+      const response = await authFetch('/api/streaming/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ streamId: showId }),
@@ -295,30 +296,29 @@ function ScheduleContent() {
     setError(null);
 
     try {
-      const supabase = createClientSideSupabase();
-
-      // Combine date and time
       const scheduledStart = new Date(`${formData.date}T${formData.time}`);
-      
       if (scheduledStart < new Date()) {
         throw new Error('Scheduled time must be in the future');
       }
 
-      const { error: submitError } = await supabase
-        .from('stream_sessions')
-        .insert({
-          seller_id: seller.id,
+      const response = await authFetch('/api/seller/streams', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           title: formData.title,
           description: formData.description,
           scheduled_start: scheduledStart.toISOString(),
           status: 'scheduled',
           platforms: formData.platforms,
           products_featured: formData.selectedProducts,
-        });
+        }),
+      });
 
-      if (submitError) throw submitError;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to schedule show');
+      }
 
-      // Reset form and reload
       setFormData({
         title: '',
         description: '',
@@ -341,13 +341,15 @@ function ScheduleContent() {
   const cancelShow = async (showId: string) => {
     try {
       setIsDeletingShow(showId);
-      const supabase = createClientSideSupabase();
-      const { error } = await supabase
-        .from('stream_sessions')
-        .update({ status: 'cancelled' })
-        .eq('id', showId);
-
-      if (error) throw error;
+      const response = await authFetch('/api/seller/streams', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [showId], status: 'cancelled' }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to cancel show');
+      }
       await loadData();
     } catch (error) {
       console.error('Error cancelling show:', error);

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { createClientSideSupabase } from '@/lib/supabase-client';
-import { StreamSession, StreamStatus } from '@/types/streaming';
+import { authFetch } from '@/lib/auth';
+import { StreamSession } from '@/types/streaming';
 
 export function useStreamStatus(sellerId: string) {
   const [streamStatus, setStreamStatus] = useState<StreamSession | null>(null);
@@ -10,30 +10,25 @@ export function useStreamStatus(sellerId: string) {
   useEffect(() => {
     if (!sellerId) return;
 
-    const supabase = createClientSideSupabase();
     let mounted = true;
-    
-    // Initial load
+
     const loadCurrentStream = async () => {
       try {
         setIsLoading(true);
         setError(null);
-        
-        const { data, error: fetchError } = await supabase
-          .from('stream_sessions')
-          .select('*')
-          .eq('seller_id', sellerId)
-          .in('status', ['pending', 'live'])
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
 
-        if (fetchError && fetchError.code !== 'PGRST116') {
-          throw fetchError;
+        const response = await authFetch(
+          `/api/seller/streams?status=pending,live&limit=1`,
+          { credentials: 'omit' }
+        );
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data?.error || 'Failed to load stream');
         }
-        
+
         if (mounted) {
-          setStreamStatus(data);
+          setStreamStatus(data.streams?.[0] ?? null);
           setIsLoading(false);
         }
       } catch (err) {
@@ -47,71 +42,8 @@ export function useStreamStatus(sellerId: string) {
 
     loadCurrentStream();
 
-    // Set up real-time subscription (optional - may fail with custom auth)
-    let channel: any = null;
-    try {
-      channel = supabase
-        .channel('stream_status_changes')
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'stream_sessions',
-            filter: `seller_id=eq.${sellerId}`,
-          },
-          (payload) => {
-            console.log('Stream status updated:', payload);
-            
-            if (payload.new && mounted) {
-              const updatedStream = payload.new as StreamSession;
-              
-              // Only update if it's a relevant status change
-              if (['pending', 'live', 'ended', 'error'].includes(updatedStream.status)) {
-                setStreamStatus(updatedStream);
-                
-                // If stream ended, clear after delay
-                if (updatedStream.status === 'ended') {
-                  setTimeout(() => {
-                    if (mounted) {
-                      setStreamStatus(null);
-                    }
-                  }, 5000);
-                }
-                
-                // If stream went to error, clear after longer delay
-                if (updatedStream.status === 'error') {
-                  setTimeout(() => {
-                    if (mounted) {
-                      setStreamStatus(null);
-                    }
-                  }, 10000);
-                }
-              }
-            }
-          }
-        )
-        .subscribe((status) => {
-          if (status === 'SUBSCRIBED') {
-            console.log('Subscribed to stream status updates');
-          } else if (status === 'CHANNEL_ERROR') {
-            console.warn('Realtime subscription failed (expected with custom auth)');
-            if (mounted) {
-              setError('Failed to subscribe to real-time updates');
-            }
-          } else if (status === 'TIMED_OUT') {
-            console.warn('Realtime subscription timed out');
-          }
-        });
-    } catch (error) {
-      console.warn('Failed to setup realtime subscription:', error);
-    }
-
     return () => {
       mounted = false;
-      if (channel) {
-        supabase.removeChannel(channel);
-      }
     };
   }, [sellerId]);
 

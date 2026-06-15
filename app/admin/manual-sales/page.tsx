@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClientSideSupabase, type PlatformSale } from '@/lib/supabase-client';
+import { authFetch } from '@/lib/auth';
+import type { PlatformSale } from '@/lib/supabase-client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -47,25 +48,23 @@ export default function AdminManualSalesPage() {
 
   const loadSales = async () => {
     try {
-      const supabase = createClientSideSupabase();
-
-      let query = supabase
-        .from('platform_sales')
-        .select('*')
-        .eq('entry_type', 'manual')
-        .order('created_at', { ascending: false });
-
-      if (statusFilter !== 'all') {
-        query = query.eq('verification_status', statusFilter);
+      const response = await authFetch('/api/admin/sales');
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to load sales data');
       }
 
-      const { data, error } = await query;
+      const data = await response.json();
+      const allSales: PlatformSale[] = data.sales || [];
+      const manualSales = allSales.filter((sale) => sale.entry_type === 'manual');
+      const filteredSales = statusFilter === 'all'
+        ? manualSales
+        : manualSales.filter((sale) => sale.verification_status === statusFilter);
 
-      if (error) throw error;
-      setSales(data || []);
-    } catch (error) {
+      setSales(filteredSales);
+    } catch (error: any) {
       console.error('Error loading sales:', error);
-      setError('Failed to load sales data');
+      setError(error.message || 'Failed to load sales data');
     } finally {
       setIsLoading(false);
     }
@@ -77,8 +76,6 @@ export default function AdminManualSalesPage() {
     setSuccess(null);
 
     try {
-      const supabase = createClientSideSupabase();
-
       const updateData: any = {
         verification_status: status,
         verified_at: new Date().toISOString(),
@@ -93,20 +90,24 @@ export default function AdminManualSalesPage() {
         updateData.rejection_reason = rejectionReason;
       }
 
-      const { error } = await supabase
-        .from('platform_sales')
-        .update(updateData)
-        .eq('id', saleId);
+      const response = await authFetch('/api/admin/sales', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ saleId, status, rejectionReason: updateData.rejection_reason }),
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to process sale');
+      }
 
       setSuccess(`Sale ${status === 'verified' ? 'approved' : 'rejected'} successfully`);
       setRejectionReason('');
       setShowRejectModal(null);
       await loadSales();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error verifying sale:', error);
-      setError('Failed to process sale');
+      setError(error.message || 'Failed to process sale');
     } finally {
       setIsProcessing(null);
     }

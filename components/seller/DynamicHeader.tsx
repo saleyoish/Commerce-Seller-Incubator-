@@ -1,9 +1,10 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { LogOut, Menu, Radio } from 'lucide-react';
 import Link from 'next/link';
 import { GlobalGoLiveButton } from '@/components/streaming/GlobalGoLiveButton';
+import { useAuth } from '@/context/AuthContext';
 
 interface DynamicHeaderProps {
   isAdmin?: boolean;
@@ -11,6 +12,8 @@ interface DynamicHeaderProps {
 
 export default function DynamicHeader({ isAdmin }: DynamicHeaderProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { logout } = useAuth();
 
   const getPageInfo = () => {
     const path = pathname || '';
@@ -39,9 +42,8 @@ export default function DynamicHeader({ isAdmin }: DynamicHeaderProps) {
   const pageInfo = getPageInfo();
 
   const handleLogout = async () => {
-    localStorage.removeItem('token');
-    await fetch('/api/auth/logout', { method: 'POST', credentials: 'omit' });
-    window.location.href = '/login';
+    await logout();
+    router.push('/login');
   };
 
   return (

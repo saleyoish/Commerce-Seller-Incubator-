@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { authFetch } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,12 +27,7 @@ export default function WaitlistAdminPage() {
 
   const loadWaitlistData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/admin/waitlist', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const res = await authFetch('/api/admin/waitlist');
 
       if (!res.ok) {
         const result = await res.json();

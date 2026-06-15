@@ -12,6 +12,10 @@ const secret = new TextEncoder().encode(JWT_SECRET);
 export interface JWTPayload {
   userId: string;
   email: string;
+  isAdmin?: boolean;
+  isSeller?: boolean;
+  is_temp_password?: boolean;
+  approval_status?: string;
   iat?: number;
   exp?: number;
 }
@@ -20,7 +24,14 @@ export interface JWTPayload {
  * Sign a JWT token for a user.
  */
 export async function signJWT(payload: JWTPayload): Promise<string> {
-  return new SignJWT({ userId: payload.userId, email: payload.email })
+  return new SignJWT({
+    userId: payload.userId,
+    email: payload.email,
+    isAdmin: payload.isAdmin ?? false,
+    isSeller: payload.isSeller ?? false,
+    is_temp_password: payload.is_temp_password ?? false,
+    approval_status: payload.approval_status ?? null,
+  })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(JWT_EXPIRES_IN)
@@ -37,6 +48,45 @@ export async function verifyJWT(token: string): Promise<JWTPayload | null> {
     return {
       userId: payload.userId as string,
       email: payload.email as string,
+      iat: payload.iat,
+      exp: payload.exp,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function base64UrlDecode(input: string): string {
+  const base64 = input.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+  if (typeof window !== 'undefined' && typeof atob === 'function') {
+    return atob(padded);
+  }
+  return Buffer.from(padded, 'base64').toString('binary');
+}
+
+function utf8Decode(str: string): string {
+  try {
+    return decodeURIComponent(
+      Array.from(str)
+        .map((c) => '%' + c.charCodeAt(0).toString(16).padStart(2, '0'))
+        .join('')
+    );
+  } catch {
+    return str;
+  }
+}
+
+export function decodeJWTPayload(token: string): JWTPayload | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const decoded = utf8Decode(base64UrlDecode(parts[1]));
+    const payload = JSON.parse(decoded) as Partial<JWTPayload>;
+    if (!payload.userId || !payload.email) return null;
+    return {
+      userId: payload.userId,
+      email: payload.email,
       iat: payload.iat,
       exp: payload.exp,
     };

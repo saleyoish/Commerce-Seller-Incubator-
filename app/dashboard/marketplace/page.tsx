@@ -13,6 +13,7 @@ import {
   Facebook,
   Instagram
 } from "lucide-react";
+import { authFetch } from '@/lib/auth';
 
 interface ConnectionStatus {
   connected: boolean;
@@ -45,13 +46,15 @@ export default function MarketplacePage() {
 
   const fetchStatuses = async () => {
     try {
-      const res = await fetch("/api/marketplace/status");
+      const res = await authFetch('/api/marketplace/status', {
+        credentials: 'omit',
+      });
       if (res.ok) {
         const data = await res.json();
         setStatuses(data.statuses);
       }
     } catch (error) {
-      console.error("Failed to fetch statuses:", error);
+      console.error('Failed to fetch statuses:', error);
     } finally {
       setLoading(false);
     }
@@ -62,16 +65,16 @@ export default function MarketplacePage() {
       let url: string;
       
       if (platform === "tiktok") {
-        const res = await fetch("/api/tiktok/connect", { method: "POST" });
+        const res = await authFetch('/api/tiktok/connect', { method: 'POST', credentials: 'omit' });
         const data = await res.json();
         if (data.authUrl) {
           window.location.href = data.authUrl;
         } else if (data.demoMode) {
           // Handle demo mode
-          alert("TikTok API not configured - demo mode would be triggered here");
+          alert('TikTok API not configured - demo mode would be triggered here');
         }
       } else if (platform === "meta") {
-        const res = await fetch("/api/meta/connect", { method: "POST" });
+        const res = await authFetch('/api/meta/connect', { method: 'POST', credentials: 'omit' });
         const data = await res.json();
         if (data.authUrl) {
           window.location.href = data.authUrl;
@@ -82,10 +85,11 @@ export default function MarketplacePage() {
         // For Whatnot, show a modal to enter API token
         const token = prompt("Enter your Whatnot API token:");
         if (token) {
-          const res = await fetch("/api/whatnot/connect", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+          const res = await authFetch('/api/whatnot/connect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ accessToken: token }),
+            credentials: 'omit',
           });
           if (res.ok) {
             fetchStatuses();
@@ -102,10 +106,11 @@ export default function MarketplacePage() {
     if (!confirm(`Are you sure you want to disconnect ${platform}?`)) return;
 
     try {
-      const res = await fetch("/api/marketplace/disconnect", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await authFetch('/api/marketplace/disconnect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ platform }),
+        credentials: 'omit',
       });
 
       if (res.ok) {
@@ -123,10 +128,11 @@ export default function MarketplacePage() {
     setSyncing((prev) => ({ ...prev, [platform]: true }));
 
     try {
-      const res = await fetch("/api/marketplace/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await authFetch('/api/marketplace/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ platform, syncType }),
+        credentials: 'omit',
       });
 
       if (res.ok) {

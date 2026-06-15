@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { authFetch } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,12 +34,7 @@ export default function ApplicationsAdminPage() {
 
   const loadApplicationsData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/admin/applications', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const res = await authFetch('/api/admin/applications');
 
       if (!res.ok) {
         const result = await res.json();
@@ -58,12 +54,10 @@ export default function ApplicationsAdminPage() {
 
   const handleApprove = async (id: string) => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/admin/applications/approve', {
+      const res = await authFetch('/api/admin/applications/approve', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({ id }),
       });
@@ -82,12 +76,10 @@ export default function ApplicationsAdminPage() {
 
   const handleReject = async (id: string) => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/admin/applications/reject', {
+      const res = await authFetch('/api/admin/applications/reject', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({ id }),
       });

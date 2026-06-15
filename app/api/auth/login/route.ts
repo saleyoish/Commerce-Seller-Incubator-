@@ -124,7 +124,12 @@ export async function POST(request: NextRequest) {
       // Use admin.id as userId since we're not using Supabase Auth
 
       console.log('[LOGIN] Generating JWT token for admin:', adminUser.id);
-      const token = await signJWT({ userId: adminUser.id, email: adminUser.email });
+      const token = await signJWT({
+        userId: adminUser.id,
+        email: adminUser.email,
+        isAdmin: true,
+        isSeller: false,
+      });
       console.log('[LOGIN] JWT token generated successfully');
 
 
@@ -176,7 +181,14 @@ export async function POST(request: NextRequest) {
     // Use seller.id as userId since we're not using Supabase Auth
 
     console.log('[LOGIN] Generating JWT token for seller:', user.id);
-    const token = await signJWT({ userId: user.id, email: user.email });
+    const token = await signJWT({
+      userId: user.id,
+      email: user.email,
+      isAdmin: false,
+      isSeller: true,
+      is_temp_password: user.is_temp_password ?? false,
+      approval_status: user.approval_status ?? null,
+    });
     console.log('[LOGIN] JWT token generated successfully');
     console.log('[LOGIN] Token length:', token.length);
     console.log('[LOGIN] Token preview:', token.substring(0, 50) + '...');

@@ -3,7 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { createClientSideSupabase, type Seller, type Product, type Sale } from '@/lib/supabase-client';
+import { authFetch } from '@/lib/auth';
+import { signOut } from '@/lib/auth-client';
+import { useAuth } from '@/context/AuthContext';
+import { type Seller, type Product, type Sale } from '@/lib/supabase-client';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Table,
@@ -41,6 +44,7 @@ export default function DashboardContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const { user, loading } = useAuth();
 
   // Stream config state
   const [streamUrl, setStreamUrl] = useState('');
@@ -52,8 +56,13 @@ export default function DashboardContent() {
   const onboardingRefresh = searchParams.get('onboarding') === 'refresh';
 
   useEffect(() => {
+    if (loading) return;
+    if (!user) {
+      router.push('/login');
+      return;
+    }
     loadDashboardData();
-  }, []);
+  }, [user, loading]);
 
   useEffect(() => {
     if (onboardingSuccess || onboardingRefresh) {
@@ -76,35 +85,61 @@ export default function DashboardContent() {
 
   const loadDashboardData = async () => {
     try {
-      const supabase = createClientSideSupabase();
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { router.push('/login'); return; }
-
-      const { data: adminData } = await supabase.from('admins').select('id').eq('user_id', session.user.id).single();
-      setIsAdmin(!!adminData);
-
-      const { data: sellerData } = await supabase.from('sellers').select('*').eq('user_id', session.user.id).single();
-      if (!sellerData) { router.push('/signup'); return; }
-
-      setSeller(sellerData);
-      setStreamUrl(sellerData.stream_embed_url || '');
-      setSchedule(sellerData.schedule_text || '');
-
-      if (!sellerData.stripe_account_id || sellerData.stripe_onboarding_status !== 'active') {
-        setShowOnboarding(true);
+      const response = await authFetch('/api/auth/me');
+      if (!response.ok) {
+        router.push('/login');
+        return;
       }
 
-      const { data: productsData } = await supabase.from('products').select('*').eq('seller_id', sellerData.id).order('created_at', { ascending: false }).limit(5);
-      setProducts(productsData || []);
+      const data = await response.json();
+      const isSeller = data.isSeller || false;
+      const isAdmin = data.isAdmin || false;
+      const sellerData = data.seller;
 
-      const { data: salesData } = await supabase.from('sales').select('*').eq('seller_id', sellerData.id).order('created_at', { ascending: false }).limit(5);
-      setSales(salesData || []);
+      if (!isSeller && !isAdmin) {
+        router.push('/login');
+        return;
+      }
 
-      const { count: productCount } = await supabase.from('products').select('*', { count: 'exact', head: true }).eq('seller_id', sellerData.id);
-      const { data: allSales } = await supabase.from('sales').select('amount, platform_fee, status').eq('seller_id', sellerData.id).eq('status', 'completed');
-      const totalRevenue = allSales?.reduce((sum, sale) => sum + (sale.amount - sale.platform_fee), 0) || 0;
+      if (!sellerData) {
+        router.push('/signup');
+        return;
+      }
 
-      setStats({ totalProducts: productCount || 0, totalSales: allSales?.length || 0, totalRevenue, pendingPayout: totalRevenue });
+      setIsAdmin(isAdmin);
+      setSeller(sellerData);
+      if (sellerData) {
+        setStreamUrl(sellerData.stream_embed_url || '');
+        setSchedule(sellerData.schedule_text || '');
+
+        if (!sellerData.stripe_account_id || sellerData.stripe_onboarding_status !== 'active') {
+          setShowOnboarding(true);
+        }
+
+        const productsResponse = await authFetch('/api/seller/products?limit=5');
+        const salesResponse = await authFetch('/api/seller/sales?limit=5');
+        const productCountResponse = await authFetch('/api/seller/products?count=true&head=true');
+        const completedSalesResponse = await authFetch('/api/seller/sales?status=completed&select=amount,platform_fee,status');
+
+        if (!productsResponse.ok) throw new Error('Failed to load products');
+        if (!salesResponse.ok) throw new Error('Failed to load sales');
+        if (!productCountResponse.ok) throw new Error('Failed to load product count');
+        if (!completedSalesResponse.ok) throw new Error('Failed to load completed sales');
+
+        const productsData = await productsResponse.json();
+        const salesData = await salesResponse.json();
+        const productCountData = await productCountResponse.json();
+        const completedSalesData = await completedSalesResponse.json();
+
+        setProducts(productsData.products || []);
+        setSales(salesData.sales || []);
+
+        const productCount = productCountData.count ?? 0;
+        const allSales = completedSalesData.sales || [];
+        const totalRevenue = allSales.reduce((sum: number, sale: any) => sum + (sale.amount - sale.platform_fee), 0);
+
+        setStats({ totalProducts: productCount, totalSales: allSales.length, totalRevenue, pendingPayout: totalRevenue });
+      }
     } catch (error) {
       console.error('Error loading dashboard:', error);
     } finally {
@@ -205,7 +240,7 @@ export default function DashboardContent() {
             <button
               className="btn-secondary text-sm px-4 py-2 flex items-center gap-2"
               onClick={async () => {
-                await createClientSideSupabase().auth.signOut();
+                await signOut();
                 router.push('/login');
               }}
             >

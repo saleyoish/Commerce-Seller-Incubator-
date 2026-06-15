@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { authFetch } from '@/lib/auth';
 import { createClientSideSupabase } from '@/lib/supabase-client';
-import { checkUserStatus } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -45,8 +45,14 @@ export default function TikTokAffiliatePage() {
 
   const loadData = async () => {
     try {
-      const { isSeller, seller: sellerData } = await checkUserStatus();
-      
+      const res = await authFetch('/api/auth/me');
+      if (!res.ok) {
+        router.push('/login');
+        return;
+      }
+      const data = await res.json();
+      const { isSeller, seller: sellerData } = data;
+
       if (!isSeller) {
         router.push('/login');
         return;

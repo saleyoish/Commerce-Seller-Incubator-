@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { createClientSideSupabase, type Seller, type Product } from '@/lib/supabase-client';
-import { checkUserStatus } from '@/lib/auth';
+import { type Seller, type Product } from '@/lib/supabase-client';
+import { authFetch } from '@/lib/auth';
 import { PLATFORM_CONFIG } from '@/lib/config';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -105,16 +105,30 @@ export default function ProductsPage() {
 
   const selectedCategory = watch('category');
 
+  const { user, loading } = useAuth();
+
   useEffect(() => {
+    if (loading) return;
+    if (!user || (!user.isSeller && !user.isAdmin)) {
+      router.push('/login');
+      return;
+    }
     loadData();
-  }, []);
+  }, [loading, user]);
 
   const loadData = async () => {
     try {
       setIsLoading(true);
-      // Check user status via API (avoids RLS issues)
-      const { isSeller, isAdmin, seller: sellerData } = await checkUserStatus();
-      
+      const response = await authFetch('/api/auth/me');
+      if (!response.ok) {
+        router.push('/login');
+        return;
+      }
+      const data = await response.json();
+      const isSeller = data.isSeller || false;
+      const isAdmin = data.isAdmin || false;
+      const sellerData = data.seller || null;
+
       if (!isSeller && !isAdmin) {
         router.push('/login');
         return;
@@ -124,24 +138,23 @@ export default function ProductsPage() {
 
       // Get products (only if seller exists)
       if (sellerData) {
-        const supabase = createClientSideSupabase();
-        const { data: productsData } = await supabase
-          .from('products')
-          .select('*')
-          .eq('seller_id', sellerData.id)
-          .order('created_at', { ascending: false });
-
-        setProducts(productsData || []);
-        setFilteredProducts(productsData || []);
+        const productsResponse = await authFetch('/api/seller/products?status=active');
+        if (!productsResponse.ok) {
+          const errorData = await productsResponse.json();
+          throw new Error(errorData.error || 'Failed to load products');
+        }
+        const productsData = await productsResponse.json();
+        setProducts(productsData.products || []);
+        setFilteredProducts(productsData.products || []);
 
         // Get platform connections
-        const { data: connections } = await supabase
-          .from('platform_connections')
-          .select('*')
-          .eq('seller_id', sellerData.id)
-          .in('platform', ['meta', 'facebook', 'tiktok', 'whatnot']);
-
-        setPlatformConnections(connections || []);
+        const connectionsResponse = await authFetch('/api/seller/platform-connections');
+        if (!connectionsResponse.ok) {
+          const errorData = await connectionsResponse.json();
+          throw new Error(errorData.error || 'Failed to load platform connections');
+        }
+        const connectionsData = await connectionsResponse.json();
+        setPlatformConnections(connectionsData.connections || []);
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -201,7 +214,6 @@ export default function ProductsPage() {
   const uploadImages = async (productId: string): Promise<string[]> => {
     if (images.length === 0) return [];
 
-    const token = localStorage.getItem('token');
     const imageUrls: string[] = [];
 
     for (const image of images) {
@@ -209,11 +221,8 @@ export default function ProductsPage() {
       formData.append('file', image);
       formData.append('productId', productId);
 
-      const response = await fetch('/api/seller/products/upload-image', {
+      const response = await authFetch('/api/seller/products/upload-image', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
         body: formData,
       });
 
@@ -237,12 +246,10 @@ export default function ProductsPage() {
 
     try {
       // Create product via API to bypass RLS
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/seller/products', {
+      const response = await authFetch('/api/seller/products', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           seller_id: seller.id,
@@ -280,12 +287,10 @@ export default function ProductsPage() {
 
       // Update product with image URLs
       if (imageUrls.length > 0) {
-        const token = localStorage.getItem('token');
-        await fetch(`/api/seller/products/${product.id}`, {
+        await authFetch(`/api/seller/products/${product.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
           },
           body: JSON.stringify({ images: imageUrls }),
         });
@@ -312,12 +317,8 @@ export default function ProductsPage() {
     if (!confirm('Are you sure you want to delete this product?')) return;
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/seller/products/${productId}`, {
+      const response = await authFetch(`/api/seller/products/${productId}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
       });
 
       if (!response.ok) {
@@ -354,12 +355,10 @@ export default function ProductsPage() {
     setError(null);
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/seller/products/${editingProduct.id}`, {
+      const response = await authFetch(`/api/seller/products/${editingProduct.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           name: editFormData.name,
@@ -396,13 +395,11 @@ export default function ProductsPage() {
 
     try {
       const text = await csvFile.text();
-      const token = localStorage.getItem('token');
 
-      const response = await fetch('/api/seller/products/import', {
+      const response = await authFetch('/api/seller/products/import', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           seller_id: seller.id,

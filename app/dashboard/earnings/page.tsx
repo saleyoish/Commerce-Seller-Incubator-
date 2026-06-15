@@ -4,7 +4,8 @@ import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { type PlatformSale, type Seller } from '@/lib/supabase-client';
-import { checkUserStatus } from '@/lib/auth';
+import { authFetch } from '@/lib/auth';
+import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -62,15 +63,29 @@ export default function EarningsPage() {
   const [dateRange, setDateRange] = useState('30');
   const [platformFilter, setPlatformFilter] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const { user, loading } = useAuth();
 
   useEffect(() => {
+    if (loading) return;
+    if (!user || (!user.isSeller && !user.isAdmin)) {
+      router.push('/login');
+      return;
+    }
     loadEarningsData();
-  }, []);
+  }, [loading, user]);
 
   const loadEarningsData = async () => {
     try {
-      // Use custom JWT auth instead of Supabase Auth
-      const { isSeller, isAdmin, seller: sellerData } = await checkUserStatus();
+      const response = await authFetch('/api/auth/me');
+      if (!response.ok) {
+        router.push('/login');
+        return;
+      }
+
+      const data = await response.json();
+      const isSeller = data.isSeller || false;
+      const isAdmin = data.isAdmin || false;
+      const sellerData = data.seller || null;
 
       if (!isSeller && !isAdmin) {
         router.push('/login');

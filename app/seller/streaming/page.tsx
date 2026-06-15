@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { type StreamSession, type Seller } from '@/lib/supabase-client';
+import { authFetch } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -56,11 +57,11 @@ export default function StreamingDashboardPage() {
   const loadStreamingData = async () => {
     try {
       setError(null);
-      const authRes = await fetch('/api/auth/check-user', { credentials: 'omit' });
+      const authRes = await authFetch('/api/auth/me');
       if (!authRes.ok) { router.push('/login'); return; }
       const userData = await authRes.json();
-      if (!userData.user) { router.push('/login'); return; }
-      const user = { id: userData.user.id, email: userData.user.email };
+      if (!userData || !userData.id) { router.push('/login'); return; }
+      const user = { id: userData.id, email: userData.email };
       const isAdminUser = userData.isAdmin;
 
       const { db: dbClient } = await import('@/lib/db');

@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { checkUserStatus } from '@/lib/auth';
+import { authFetch } from '@/lib/auth';
+import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,6 +29,7 @@ export default function WhatnotOnboardingPage() {
   const [sellerStatus, setSellerStatus] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user, loading } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -41,12 +43,24 @@ export default function WhatnotOnboardingPage() {
   });
 
   useEffect(() => {
+    if (loading) return;
+    if (!user || !user.isSeller) {
+      router.push('/login');
+      return;
+    }
     loadData();
-  }, []);
+  }, [loading, user]);
 
   const loadData = async () => {
     try {
-      const { isSeller, seller: sellerData } = await checkUserStatus();
+      const response = await authFetch('/api/auth/me');
+      if (!response.ok) {
+        router.push('/login');
+        return;
+      }
+      const data = await response.json();
+      const isSeller = data.isSeller || false;
+      const sellerData = data.seller || null;
       
       if (!isSeller) {
         router.push('/login');

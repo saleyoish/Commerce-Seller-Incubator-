@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
 import AuthGuard from '@/components/AuthGuard';
 import SellerSidebar from './SellerSidebar';
 import DynamicHeader from '@/components/seller/DynamicHeader';
@@ -10,28 +10,8 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    const fetchStatus = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) return;
-        const res = await fetch('/api/auth/check-user', {
-          headers: { Authorization: `Bearer ${token}` },
-          credentials: 'omit',
-          cache: 'no-store',
-        });
-        if (!res.ok) return;
-        const data = await res.json();
-        setIsAdmin(data.isAdmin ?? false);
-      } catch (error) {
-        console.error('Seller layout admin status check failed:', error);
-      }
-    };
-
-    fetchStatus();
-  }, []);
+  const { user } = useAuth();
+  const isAdmin = user?.isAdmin ?? false;
 
   return (
     <AuthGuard redirectPath="/login">

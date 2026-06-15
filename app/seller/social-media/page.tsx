@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { createClientSideSupabase, type SocialMediaAccount } from "@/lib/supabase-client";
-import { checkUserStatus } from "@/lib/auth"; 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

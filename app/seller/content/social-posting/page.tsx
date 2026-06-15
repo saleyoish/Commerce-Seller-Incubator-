@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createClientSideSupabase, type GeneratedClip, type SocialPost } from '@/lib/supabase-client';
-import { checkUserStatus } from '@/lib/auth';
+import { authFetch } from '@/lib/auth';
+import { type GeneratedClip, type SocialPost } from '@/lib/supabase-client';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -44,6 +45,7 @@ export default function SocialPostingPage() {
   const [socialPosts, setSocialPosts] = useState<SocialPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPosting, setIsPosting] = useState(false);
+  const { user, loading } = useAuth();
   const [selectedClip, setSelectedClip] = useState<GeneratedClip | null>(null);
   const [showPostForm, setShowPostForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,12 +60,24 @@ export default function SocialPostingPage() {
   });
 
   useEffect(() => {
+    if (loading) return;
+    if (!user || !user.isSeller) {
+      router.push('/login');
+      return;
+    }
     loadData();
-  }, []);
+  }, [loading, user]);
 
   const loadData = async () => {
     try {
-      const { isSeller, seller: sellerData } = await checkUserStatus();
+      const response = await authFetch('/api/auth/me');
+      if (!response.ok) {
+        router.push('/login');
+        return;
+      }
+      const data = await response.json();
+      const isSeller = data.isSeller || false;
+      const sellerData = data.seller || null;
       
       if (!isSeller) {
         router.push('/login');
@@ -73,27 +87,21 @@ export default function SocialPostingPage() {
       setSeller(sellerData);
 
       if (sellerData) {
-        const supabase = createClientSideSupabase();
-        
-        // Get ready clips
-        const { data: clipsData } = await supabase
-          .from('generated_clips')
-          .select('*')
-          .eq('seller_id', sellerData.id)
-          .eq('status', 'ready')
-          .order('created_at', { ascending: false });
+        const clipsRes = await authFetch('/api/content/clips?status=ready');
+        if (!clipsRes.ok) {
+          const clipsResult = await clipsRes.json();
+          throw new Error(clipsResult.error || 'Failed to load clips');
+        }
+        const clipsResult = await clipsRes.json();
+        setClips(clipsResult.clips || []);
 
-        setClips(clipsData || []);
-
-        // Get social posts
-        const { data: postsData } = await supabase
-          .from('social_posts')
-          .select('*')
-          .eq('seller_id', sellerData.id)
-          .order('created_at', { ascending: false })
-          .limit(20);
-
-        setSocialPosts(postsData || []);
+        const postsRes = await authFetch('/api/social-media/posts');
+        if (!postsRes.ok) {
+          const postsResult = await postsRes.json();
+          throw new Error(postsResult.error || 'Failed to load social posts');
+        }
+        const postsResult = await postsRes.json();
+        setSocialPosts(postsResult.posts || []);
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -111,7 +119,7 @@ export default function SocialPostingPage() {
     setError(null);
 
     try {
-      const response = await fetch('/api/social-media/post', {
+      const response = await authFetch('/api/social-media/post', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

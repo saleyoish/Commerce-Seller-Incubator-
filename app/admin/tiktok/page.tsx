@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { authFetch } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,12 +38,7 @@ export default function TikTokAdminPage() {
 
   const loadTikTokData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/admin/tiktok', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const res = await authFetch('/api/admin/tiktok');
 
       if (!res.ok) {
         const result = await res.json();
@@ -63,12 +59,10 @@ export default function TikTokAdminPage() {
 
   const handleSync = async (sellerId: string) => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/admin/tiktok/sync', {
+      const res = await authFetch('/api/admin/tiktok/sync', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({ sellerId }),
       });

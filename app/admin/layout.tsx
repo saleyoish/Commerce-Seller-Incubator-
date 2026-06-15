@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import AuthGuard from '@/components/AuthGuard';
 import AdminSidebar from './AdminSidebar';
+import { signOut } from '@/lib/auth-client';
 import { LogOut as SignOut } from 'lucide-react';
 
 export default function AdminLayout({
@@ -13,8 +14,7 @@ export default function AdminLayout({
   const router = useRouter();
 
   const handleLogout = async () => {
-    localStorage.removeItem('token');
-    await fetch('/api/auth/logout', { method: 'POST', credentials: 'omit' });
+    await signOut();
     router.push('/login');
   };
 
