@@ -48,12 +48,13 @@ export async function GET(request: NextRequest) {
 
     console.log('[GET-CONNECTION] Seller found:', sellerData.email, 'seller.id:', sellerData.id);
 
-    // Get Meta connection
+    // Get Meta connection (only return if connected)
     const { data: connection, error: connError } = await db
       .from('platform_connections')
       .select('*')
       .eq('seller_id', sellerData.id)
       .eq('platform', 'meta')
+      .eq('status', 'connected')
       .maybeSingle();
 
     console.log('[GET-CONNECTION] Connection query result:', { 

@@ -1,4 +1,3 @@
-import { createAdminSupabase } from '@/lib/supabase-admin';
 import { NextResponse } from 'next/server';
 import { fetchUserBusinesses, fetchOwnedCatalogs, fetchCatalogProducts } from '@/lib/meta-service';
 import { verifyJWT, extractToken } from '@/lib/jwt';
@@ -7,10 +6,10 @@ import { db } from '@/lib/db';
 export async function POST(request: Request) {
   try {
     console.log('[Sync Products] Starting sync');
-    
+
     // Get JWT token from headers
     const token = extractToken(request.headers);
-    
+
     if (!token) {
       console.log('[Sync Products] No JWT token found');
       return NextResponse.json(
@@ -21,7 +20,7 @@ export async function POST(request: Request) {
 
     console.log('[Sync Products] Verifying JWT token');
     const payload = await verifyJWT(token);
-    
+
     if (!payload) {
       console.log('[Sync Products] Invalid JWT token');
       return NextResponse.json(
@@ -33,10 +32,8 @@ export async function POST(request: Request) {
     console.log('[Sync Products] JWT token verified, userId:', payload.userId);
     const sellerId = payload.userId;
 
-    const supabase = createAdminSupabase();
-
     // Get Meta connection (check both meta and facebook for backward compatibility)
-    const { data: connection, error: connError } = await supabase
+    const { data: connection, error: connError } = await db
       .from('platform_connections')
       .select('*')
       .eq('seller_id', sellerId)
@@ -146,7 +143,7 @@ export async function POST(request: Request) {
       for (const metaProduct of metaProducts) {
         try {
           // Check if product already exists for this seller with same SKU (if available) or name
-          const { data: existingProduct } = await supabase
+          const { data: existingProduct } = await db
             .from('products')
             .select('id')
             .eq('seller_id', sellerId)
@@ -173,7 +170,7 @@ export async function POST(request: Request) {
           let productId: string;
           if (existingProduct) {
             // Update existing product
-            const { error: updateError } = await supabase
+            const { error: updateError } = await db
               .from('products')
               .update(productData)
               .eq('id', existingProduct.id);
@@ -184,7 +181,7 @@ export async function POST(request: Request) {
             productId = existingProduct.id;
           } else {
             // Insert new product
-            const { data: newProduct, error: insertError } = await supabase.from('products').insert(productData).select('id').single();
+            const { data: newProduct, error: insertError } = await db.from('products').insert(productData).select('id').single();
             if (insertError) {
               console.error('[Sync Products] Error inserting product:', JSON.stringify(insertError));
               console.error('[Sync Products] Product data being inserted:', JSON.stringify(productData));
@@ -213,7 +210,7 @@ export async function POST(request: Request) {
               metadata: metaProduct.raw,
             };
 
-            const { data: existingMetaProduct } = await supabase
+            const { data: existingMetaProduct } = await db
               .from('meta_products')
               .select('id')
               .eq('seller_id', sellerId)
@@ -221,7 +218,7 @@ export async function POST(request: Request) {
               .maybeSingle();
 
             if (existingMetaProduct) {
-              const { error: metaUpdateError } = await supabase
+              const { error: metaUpdateError } = await db
                 .from('meta_products')
                 .update(metaProductData)
                 .eq('id', existingMetaProduct.id);
@@ -229,7 +226,7 @@ export async function POST(request: Request) {
                 console.error('[Sync Products] Error updating meta product:', metaUpdateError);
               }
             } else {
-              const { error: metaInsertError } = await supabase.from('meta_products').insert(metaProductData);
+              const { error: metaInsertError } = await db.from('meta_products').insert(metaProductData);
               if (metaInsertError) {
                 console.error('[Sync Products] Error inserting meta product:', metaInsertError);
               }
@@ -248,7 +245,7 @@ export async function POST(request: Request) {
     }
 
     // Update sync timestamp in platform connection
-    const { error: updateError } = await supabase
+    const { error: updateError } = await db
       .from('platform_connections')
       .update({
         metadata: {

@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createAdminSupabase } from '@/lib/supabase-admin';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { verifyJWT, extractToken } from '@/lib/jwt';
+import { db } from '@/lib/db';
 
 export async function POST(request: Request) {
   try {
@@ -12,32 +11,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'connectionId is required' }, { status: 400 });
     }
 
-    // Get authenticated user from session
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-    const cookieStore = await cookies();
-    
-    const supabase = createServerClient(supabaseUrl!, supabasePublishableKey!, {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
-        },
-      },
-    });
-    
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // Get JWT token from headers
+    const token = extractToken(request.headers);
 
-    if (userError || !user) {
+    if (!token) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
-    // Get connection using admin client
-    const adminSupabase = createAdminSupabase();
-    const { data: connection, error: connectionError } = await adminSupabase
+    const payload = await verifyJWT(token);
+
+    if (!payload) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    // Get connection using db client
+    const { data: connection, error: connectionError } = await db
       .from('platform_connections')
       .select('*')
       .eq('id', connectionId)
-      .eq('seller_id', user.id)
+      .eq('seller_id', payload.userId)
       .single();
 
     if (connectionError || !connection) {
@@ -80,7 +72,7 @@ export async function POST(request: Request) {
     }
 
     // Token is valid, update connection with latest user info
-    await adminSupabase
+    await db
       .from('platform_connections')
       .update({
         platform_username: data.name,
