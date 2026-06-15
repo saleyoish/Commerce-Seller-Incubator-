@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { authFetch } from '@/lib/auth';
 import { type Seller, type Product, type Sale } from '@/lib/supabase-client';
+import { useAuth } from '@/context/AuthContext';
 import { useStreamStatus } from '@/hooks/useStreamStatus';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
@@ -79,6 +80,7 @@ function DashboardContentInner() {
   const [isLoading, setIsLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const { user, loading } = useAuth();
 
   // Stream config state
   const [streamUrl, setStreamUrl] = useState('');

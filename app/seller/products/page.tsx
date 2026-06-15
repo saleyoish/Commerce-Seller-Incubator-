@@ -8,6 +8,7 @@ import * as z from 'zod';
 import { type Seller, type Product } from '@/lib/supabase-client';
 import { authFetch } from '@/lib/auth';
 import { PLATFORM_CONFIG } from '@/lib/config';
+import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
